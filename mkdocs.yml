@@ -1,0 +1,15 @@
+site_name: Noetic Systems
+site_description: Post-retrieval graph reconciliation for hybrid search.
+site_url: ""
+
+theme:
+  name: mkdocs
+  navigation_depth: 2
+
+nav:
+  - Home: index.md
+  - The Process: process.md
+  - Testing Results: testing-results.md
+
+extra_css:
+  - stylesheets/clean.css

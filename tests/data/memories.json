@@ -1,0 +1,97 @@
+{
+  "test_corpus": [
+    {
+      "id": "sys-upgrade-decoy-1",
+      "text": "The distributed system upgrade is safe and has passed all deployment checks.",
+      "metadata": {
+        "source": "lab",
+        "stance": "safe-decoy",
+        "category": "deployment"
+      }
+    },
+    {
+      "id": "sys-upgrade-decoy-2",
+      "text": "System upgrade deployment safety has been confirmed by the engineering team.",
+      "metadata": {
+        "source": "lab",
+        "stance": "safe-decoy",
+        "category": "deployment"
+      }
+    },
+    {
+      "id": "sys-upgrade-decoy-3",
+      "text": "Deploy the upgrade with confidence - fully tested and production ready.",
+      "metadata": {
+        "source": "review",
+        "stance": "safe-decoy",
+        "category": "deployment"
+      }
+    },
+    {
+      "id": "sys-upgrade-risk-performance",
+      "text": "Distributed system upgrade: Load tests reveal memory pressure and latency spikes under burst traffic patterns.",
+      "metadata": {
+        "source": "lab",
+        "stance": "risk-cluster",
+        "category": "performance"
+      }
+    },
+    {
+      "id": "sys-upgrade-risk-database",
+      "text": "Distributed system upgrade: Schema migration requires manual intervention and cannot auto-rollback.",
+      "metadata": {
+        "source": "lab",
+        "stance": "risk-cluster",
+        "category": "database"
+      }
+    },
+    {
+      "id": "sys-upgrade-risk-infrastructure",
+      "text": "Distributed system upgrade: Load balancer configuration incompatible with new service mesh version.",
+      "metadata": {
+        "source": "review",
+        "stance": "risk-cluster",
+        "category": "infrastructure"
+      }
+    },
+    {
+      "id": "sys-upgrade-risk-monitoring",
+      "text": "Distributed system upgrade: Production canary deployments showed elevated error rates in payment processing.",
+      "metadata": {
+        "source": "review",
+        "stance": "risk-cluster",
+        "category": "monitoring"
+      }
+    },
+    {
+      "id": "sys-upgrade-risk-operations",
+      "text": "Distributed system upgrade: Rollback procedure is incomplete and recovery time exceeds SLA requirements.",
+      "metadata": {
+        "source": "review",
+        "stance": "risk-cluster",
+        "category": "operations"
+      }
+    },
+    {
+      "id": "unrelated-api-docs",
+      "text": "The new API documentation system has been upgraded and deployed successfully.",
+      "metadata": {
+        "source": "forum",
+        "stance": "noise",
+        "category": "documentation"
+      }
+    },
+    {
+      "id": "unrelated-historical",
+      "text": "Last year's infrastructure upgrade went smoothly with no incidents.",
+      "metadata": {
+        "source": "forum",
+        "stance": "noise",
+        "category": "historical"
+      }
+    }
+  ],
+  "queries": {
+    "system_upgrade_safety": "Is the distributed system upgrade safe to deploy?"
+  }
+}
