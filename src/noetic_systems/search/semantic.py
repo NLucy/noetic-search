@@ -5,12 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .database import Database
+from noetic_systems.database import Database
 
 
 @dataclass(frozen=True)
 class SearchResult:
-    """Single search result with score and metadata."""
+    """Single search result with score and metadata.
+
+    Attributes:
+        id: Document identifier.
+        text: Retrieved chunk text.
+        score: Search score where larger values are better.
+        metadata: Document metadata copied from storage.
+    """
 
     id: str
     text: str
@@ -25,7 +32,10 @@ class SemanticSearch:
         """Initialize semantic search with a database.
 
         Args:
-            database: Database instance with populated collection
+            database: Database instance with a populated collection.
+
+        Returns:
+            None.
         """
         self.database = database
 
@@ -38,12 +48,12 @@ class SemanticSearch:
         """Perform semantic search using vector similarity.
 
         Args:
-            query: Query text to search for
-            limit: Maximum number of results to return
-            where: Optional metadata filter (e.g., {"source": "lab"})
+            query: Query text to search for.
+            limit: Maximum number of results to return.
+            where: Optional metadata filter, such as `{"source": "lab"}`.
 
         Returns:
-            List of SearchResult objects, sorted by relevance (highest first)
+            Search results sorted by descending semantic relevance.
         """
         results = self.database.collection.query(
             query_texts=[query],

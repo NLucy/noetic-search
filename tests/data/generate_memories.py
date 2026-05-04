@@ -140,8 +140,18 @@ SOURCES = ["stackoverflow", "github", "docs", "blog", "forum", "slack"]
 QUALITY = ["high", "medium", "low"]
 STATUS = ["solved", "unsolved", "discussing", "archived"]
 
+
 def generate_memory(id_num: int, topic: str, question: str) -> dict[str, Any]:
-    """Generate a single memory."""
+    """Generate a single synthetic software knowledge-base memory.
+
+    Args:
+        id_num: Numeric identifier within the topic.
+        topic: Topic namespace for the memory.
+        question: Source question text.
+
+    Returns:
+        Memory document with text and metadata.
+    """
     answer_type = random.choice(list(ANSWER_TEMPLATES.keys()))
     template = random.choice(ANSWER_TEMPLATES[answer_type])
 
@@ -187,11 +197,19 @@ def generate_memory(id_num: int, topic: str, question: str) -> dict[str, Any]:
             "status": random.choice(STATUS),
             "votes": random.randint(0, 100),
             "answer_type": answer_type,
-        }
+        },
     }
 
+
 def generate_corpus(total: int = 1000) -> list[dict[str, Any]]:
-    """Generate full corpus."""
+    """Generate a synthetic software knowledge-base corpus.
+
+    Args:
+        total: Approximate number of memories to generate.
+
+    Returns:
+        Shuffled memory documents.
+    """
     corpus = []
     memories_per_topic = total // len(TOPICS)
 
@@ -206,7 +224,13 @@ def generate_corpus(total: int = 1000) -> list[dict[str, Any]]:
 
     return corpus
 
-def main():
+
+def main() -> None:
+    """Generate and write the default software knowledge-base fixture.
+
+    Returns:
+        None.
+    """
     random.seed(42)  # Reproducible
 
     corpus = generate_corpus(1000)
@@ -227,7 +251,7 @@ def main():
             "total_memories": len(corpus),
             "topics": list(TOPICS.keys()),
             "generated_with_seed": 42,
-        }
+        },
     }
 
     # Save
@@ -237,6 +261,7 @@ def main():
     print(f"Generated {len(corpus)} memories")
     print(f"Topics: {', '.join(TOPICS.keys())}")
     print(f"Saved to software_kb.json")
+
 
 if __name__ == "__main__":
     main()

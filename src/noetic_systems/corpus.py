@@ -1,9 +1,17 @@
+"""Small built-in corpus used by demos and smoke tests."""
+
 from __future__ import annotations
 
 from typing import Any
 
 
 def demo_corpus() -> list[dict[str, Any]]:
+    """Return the built-in demonstration corpus.
+
+    Returns:
+        Documents with `id`, `text`, and `metadata` fields suitable for loading into
+        the local database wrapper.
+    """
     return [
         {
             "id": "battery.lab",

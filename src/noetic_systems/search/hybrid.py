@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from .database import Database
-from .lexical_search import LexicalSearch
-from .semantic_search import SearchResult, SemanticSearch
+from noetic_systems.database import Database
+from noetic_systems.search.lexical import LexicalSearch
+from noetic_systems.search.semantic import SearchResult, SemanticSearch
 
 
 class HybridSearch:
@@ -21,9 +21,12 @@ class HybridSearch:
         """Initialize hybrid search.
 
         Args:
-            database: Database instance with populated collection
-            semantic_weight: Weight for semantic search scores (default: 0.5)
-            lexical_weight: Weight for lexical search scores (default: 0.5)
+            database: Database instance with a populated collection.
+            semantic_weight: Weight applied to normalized semantic scores.
+            lexical_weight: Weight applied to normalized lexical scores.
+
+        Returns:
+            None.
         """
         self.database = database
         self.semantic = SemanticSearch(database)
@@ -40,18 +43,18 @@ class HybridSearch:
         """Perform hybrid search combining semantic and lexical strategies.
 
         Args:
-            query: Query text to search for
-            limit: Maximum number of results to return
-            where: Optional metadata filter (e.g., {"source": "lab"})
+            query: Query text to search for.
+            limit: Maximum number of results to return.
+            where: Optional metadata filter, such as `{"source": "lab"}`.
 
         Returns:
-            List of SearchResult objects, sorted by combined score (highest first)
+            Search results sorted by descending combined score.
         """
         semantic_results = self.semantic.search(query, limit=limit * 2, where=where)
         lexical_results = self.lexical.search(query, limit=limit * 2, where=where)
 
-        semantic_scores = self._normalize_scores(semantic_results)
-        lexical_scores = self._normalize_scores(lexical_results)
+        semantic_scores = self.normalize_scores(semantic_results)
+        lexical_scores = self.normalize_scores(lexical_results)
 
         combined: dict[str, tuple[SearchResult, float]] = {}
 
@@ -87,8 +90,15 @@ class HybridSearch:
 
         return results
 
-    def _normalize_scores(self, results: list[SearchResult]) -> list[float]:
-        """Normalize scores to [0, 1] range using min-max normalization."""
+    def normalize_scores(self, results: list[SearchResult]) -> list[float]:
+        """Normalize scores with min-max scaling.
+
+        Args:
+            results: Search results whose scores should be normalized.
+
+        Returns:
+            Scores scaled to the `[0, 1]` interval. Equal scores map to `1.0`.
+        """
         if not results:
             return []
 

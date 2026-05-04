@@ -6,14 +6,13 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from noetic_systems.database import Database
-from noetic_systems.reconciliation import Reconciler
-
-from .messages import Message
-from .prompts import (
+from noetic_systems.llm.messages import Message
+from noetic_systems.llm.prompts import (
     build_basin_messages,
     build_evidence_field_messages,
     build_top_k_messages,
 )
+from noetic_systems.reconciliation.engine import Reconciler
 
 
 Mode = Literal["top-k", "basin", "evidence-field"]
@@ -21,7 +20,14 @@ Mode = Literal["top-k", "basin", "evidence-field"]
 
 @dataclass(frozen=True)
 class LLMExperiment:
-    """Prepared LLM inputs for comparing retrieval surfaces."""
+    """Prepared LLM inputs for comparing retrieval surfaces.
+
+    Attributes:
+        query: Query used to produce all comparison surfaces.
+        top_k_messages: Messages for the raw top-k baseline.
+        basin_messages: Messages for the strongest-basin surface.
+        evidence_field_messages: Messages for the full evidence-field surface.
+    """
 
     query: str
     top_k_messages: list[Message]
@@ -29,6 +35,14 @@ class LLMExperiment:
     evidence_field_messages: list[Message]
 
     def messages_for(self, mode: Mode) -> list[Message]:
+        """Return messages for a retrieval surface.
+
+        Args:
+            mode: Retrieval surface identifier.
+
+        Returns:
+            Messages for the requested surface.
+        """
         if mode == "top-k":
             return self.top_k_messages
         if mode == "basin":
@@ -44,7 +58,18 @@ def build_llm_experiment(
     result_limit: int = 10,
     chunk_limit: int = 5,
 ) -> LLMExperiment:
-    """Build comparable top-k, basin, and field LLM inputs."""
+    """Build comparable top-k, basin, and evidence-field LLM inputs.
+
+    Args:
+        database: Database containing the indexed corpus.
+        query: Query to evaluate.
+        candidate_limit: Hybrid candidates to retrieve before reconciliation.
+        result_limit: Candidates retained in the reconciled graph.
+        chunk_limit: Number of chunks to include in compact payloads.
+
+    Returns:
+        Experiment object containing all comparison message sets.
+    """
     reconciler = Reconciler(database)
     baseline_ids = reconciler.hybrid_baseline(query, limit=chunk_limit)
     baseline_chunks = []
@@ -82,7 +107,14 @@ def build_llm_experiment(
 
 
 def summarize_payload(payload: dict[str, Any]) -> str:
-    """Return a compact payload summary for CLI output."""
+    """Return a compact payload summary for CLI output.
+
+    Args:
+        payload: Responses API request payload.
+
+    Returns:
+        Human-readable one-line summary.
+    """
     input_items = payload.get("input", [])
     roles = [
         item.get("role", item.get("type", "unknown"))

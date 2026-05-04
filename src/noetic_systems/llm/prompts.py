@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .messages import DeveloperMessage, Message, UserMessage
+from noetic_systems.llm.messages import DeveloperMessage, Message, UserMessage
 
 
 RECONCILIATION_DEVELOPER_PROMPT = """You are evaluating retrieved evidence for an answer.
@@ -17,7 +17,15 @@ def build_top_k_messages(
     query: str,
     chunks: list[dict[str, Any]],
 ) -> list[Message]:
-    """Build a plain top-k chunk prompt."""
+    """Build a plain top-k chunk prompt.
+
+    Args:
+        query: User query.
+        chunks: Raw top-k chunks to provide as evidence.
+
+    Returns:
+        Developer and user messages for the top-k baseline.
+    """
     payload = {
         "query": query,
         "chunks": chunks,
@@ -36,7 +44,16 @@ def build_evidence_field_messages(
     evidence_field: dict[str, Any],
     chunks: list[dict[str, Any]] | None = None,
 ) -> list[Message]:
-    """Build a prompt that gives the model the reconciled evidence field."""
+    """Build a prompt that gives the model the reconciled evidence field.
+
+    Args:
+        query: User query.
+        evidence_field: Structured reconciliation field.
+        chunks: Optional representative chunks from the winning basin.
+
+    Returns:
+        Developer and user messages for evidence-field evaluation.
+    """
     payload = {
         "query": query,
         "evidence_field": evidence_field,
@@ -57,7 +74,15 @@ def build_basin_messages(
     query: str,
     basin: dict[str, Any],
 ) -> list[Message]:
-    """Build a prompt that gives the model the strongest basin only."""
+    """Build a prompt that gives the model the strongest basin only.
+
+    Args:
+        query: User query.
+        basin: Strongest-basin payload.
+
+    Returns:
+        Developer and user messages for basin-only evaluation.
+    """
     payload = {
         "query": query,
         "strongest_basin": basin,

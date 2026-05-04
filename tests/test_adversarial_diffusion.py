@@ -4,25 +4,48 @@ import json
 import unittest
 from pathlib import Path
 
-from noetic_systems import Database, Reconciler
+from noetic_systems.database import Database
+from noetic_systems.reconciliation.engine import Reconciler
 
 
 class AdversarialDiffusionTests(unittest.TestCase):
+    """Validate behavior on an adversarial retrieval field."""
+
     @classmethod
     def setUpClass(cls) -> None:
+        """Load fixture data once for the test class.
+
+        Returns:
+            None.
+        """
         data_path = Path(__file__).parent / "data" / "memories.json"
         with open(data_path) as f:
             cls.test_data = json.load(f)
 
     def setUp(self) -> None:
+        """Create a fresh database and reconciler for each test.
+
+        Returns:
+            None.
+        """
         self.db = Database(collection_name="test_adversarial", reset=True)
         self.db.add_documents(self.test_data["test_corpus"])
         self.reconciler = Reconciler(self.db)
 
     def tearDown(self) -> None:
+        """Remove the test collection.
+
+        Returns:
+            None.
+        """
         self.db.reset()
 
     def test_hybrid_baseline_exposes_decoys(self) -> None:
+        """Verify raw hybrid retrieval surfaces decoy documents.
+
+        Returns:
+            None.
+        """
         query = self.test_data["queries"]["system_upgrade_safety"]
         baseline_docs = self.reconciler.hybrid_baseline(query, limit=5)
 
@@ -34,6 +57,11 @@ class AdversarialDiffusionTests(unittest.TestCase):
         self.assertGreaterEqual(baseline_stances.count("safe-decoy"), 2)
 
     def test_reconciliation_returns_measured_basin_record(self) -> None:
+        """Verify reconciliation produces basin metrics and evidence fields.
+
+        Returns:
+            None.
+        """
         query = self.test_data["queries"]["system_upgrade_safety"]
         result = self.reconciler.reconcile(query, candidate_limit=10, result_limit=10)
 
@@ -49,10 +77,14 @@ class AdversarialDiffusionTests(unittest.TestCase):
         self.assertGreaterEqual(result.winner.energy, 0.0)
         self.assertLessEqual(result.uncertainty, 1.0)
         self.assertGreater(len(result.document_ids()), 0)
-        self.assertIn("source_breadth", evidence["winning_basin"])
-        self.assertIn("document_breadth", evidence["winning_basin"])
+        self.assertIn("duplicate_penalty", evidence["winning_basin"])
 
     def test_chunks_are_ready_for_llm_context(self) -> None:
+        """Verify final chunks contain LLM context fields.
+
+        Returns:
+            None.
+        """
         query = self.test_data["queries"]["system_upgrade_safety"]
         result = self.reconciler.reconcile(query, candidate_limit=10, result_limit=10)
 

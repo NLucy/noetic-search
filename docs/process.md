@@ -93,8 +93,8 @@ graph reconciliation for precision
 
 Each candidate becomes a node in a graph.
 
-Edges connect candidates that appear related. The current implementation uses only
-signals available out of the box:
+Weighted evidence connections join candidates that appear related. The current
+implementation uses only signals available out of the box:
 
 - embedding similarity
 - shared ordinary metadata such as `document_id`, `url`, `title`, `domain`, `section`, `author`, or `source`
@@ -102,6 +102,10 @@ signals available out of the box:
 
 No labels are required. No LLM has to annotate the corpus. The graph is built from
 raw chunks, embeddings, and ordinary metadata.
+
+In the final adjacency graph, a pair of chunks has one connection weight. The
+individual signals are kept as inspection records, then collapsed into that one
+pairwise weight for diffusion and spectral partitioning.
 
 ### Principle
 
@@ -223,8 +227,6 @@ The reconciler accepts the split only when:
 - the split improves modularity
 - the graph structure supports the separation
 
-A greedy modularity detector is also available as a fallback and benchmark control.
-
 ### Principle
 
 The graph Laplacian is one of the central tools in spectral graph theory. It captures
@@ -265,9 +267,6 @@ The score is not raw diffusion energy. It combines several properties:
 - settled energy
 - support count
 - cohesion
-- source breadth
-- document breadth
-- metadata support
 - duplicate penalty
 
 This matters because the strongest evidence is not always the loudest cluster.
@@ -279,7 +278,7 @@ members were lower-ranked.
 ### Principle
 
 This is multi-objective scoring. The system is balancing local relevance, graph
-support, diversity, and anti-duplication pressure.
+support, cohesion, and anti-duplication pressure.
 
 This resembles ideas from:
 
@@ -407,17 +406,20 @@ The implementation is deliberately small.
 | Process step | Main code |
 | --- | --- |
 | Store and fetch chunks | `src/noetic_systems/database.py` |
-| Vector search | `src/noetic_systems/semantic_search.py` |
-| BM25 lexical search | `src/noetic_systems/lexical_search.py` |
-| Hybrid candidate ranking | `src/noetic_systems/hybrid_search.py` |
-| Graph construction | `Reconciler._build_evidence_graph()` |
-| Energy seeding | `Reconciler._seed_energy()` |
-| Diffusion | `Reconciler._diffuse()` |
-| Spectral basin detection | `Reconciler._detect_spectral_communities()` |
-| Fiedler split | `Reconciler._fiedler_split()` |
-| Basin scoring | `Reconciler._build_basins()` |
-| Intra-basin chunk ranking | `Reconciler._rank_basin_documents()` |
-| Uncertainty | `Reconciler._calculate_uncertainty()` |
+| Vector search | `src/noetic_systems/search/semantic.py` |
+| BM25 lexical search | `src/noetic_systems/search/lexical.py` |
+| Hybrid candidate ranking | `src/noetic_systems/search/hybrid.py` |
+| Reconciliation orchestration | `src/noetic_systems/reconciliation/engine.py` |
+| Candidate field admission | `src/noetic_systems/reconciliation/candidates.py` |
+| Graph construction | `src/noetic_systems/reconciliation/graph.py` |
+| Energy seeding | `src/noetic_systems/reconciliation/seeding.py::seed_energy()` |
+| Diffusion | `src/noetic_systems/reconciliation/diffusion.py::diffuse()` |
+| Spectral basin detection | `src/noetic_systems/reconciliation/spectral.py::detect_spectral_communities()` |
+| Fiedler split | `src/noetic_systems/reconciliation/spectral.py::fiedler_split()` |
+| Basin scoring | `src/noetic_systems/reconciliation/basins.py::build_basins()` |
+| Intra-basin chunk ranking | `src/noetic_systems/reconciliation/ranking.py::rank_basin_documents()` |
+| Uncertainty | `src/noetic_systems/reconciliation/uncertainty.py::calculate_uncertainty()` |
+| Result surfaces | `src/noetic_systems/reconciliation/result.py` |
 | LLM payloads | `src/noetic_systems/llm/experiment.py` |
 
 The whole path is:

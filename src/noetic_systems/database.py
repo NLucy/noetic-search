@@ -22,9 +22,13 @@ class Database:
         """Initialize ChromaDB client and collection.
 
         Args:
-            collection_name: Name of the ChromaDB collection
-            persist_directory: Directory to persist data (None for in-memory)
-            reset: If True, delete existing collection and start fresh
+            collection_name: Name of the ChromaDB collection.
+            persist_directory: Directory to persist data. When omitted, the
+                collection is in-memory.
+            reset: Whether to delete an existing collection before opening it.
+
+        Returns:
+            None.
         """
         if persist_directory:
             self.client = chromadb.PersistentClient(
@@ -54,7 +58,10 @@ class Database:
         """Add documents to the collection.
 
         Args:
-            documents: List of dicts with 'id', 'text', and 'metadata' keys
+            documents: Documents with `id`, `text`, and optional `metadata` keys.
+
+        Returns:
+            None.
         """
         if not documents:
             return
@@ -76,7 +83,10 @@ class Database:
         """Load documents from a JSON file.
 
         Args:
-            json_path: Path to JSON file with 'test_corpus' key
+            json_path: Path to a JSON file containing a `test_corpus` list.
+
+        Returns:
+            None.
         """
         with open(json_path) as f:
             data = json.load(f)
@@ -85,19 +95,31 @@ class Database:
         self.add_documents(documents)
 
     def count(self) -> int:
-        """Return the number of documents in the collection."""
+        """Return the number of documents in the collection.
+
+        Returns:
+            Number of stored documents.
+        """
         return self.collection.count()
 
     def get_all_ids(self) -> list[str]:
-        """Return all document IDs in the collection."""
+        """Return all document IDs in the collection.
+
+        Returns:
+            Stored document identifiers.
+        """
         result = self.collection.get()
         return result["ids"]
 
     def get_by_id(self, doc_id: str) -> dict[str, Any] | None:
         """Retrieve a document by ID.
 
+        Args:
+            doc_id: Document identifier to fetch.
+
         Returns:
-            Dict with 'id', 'text', and 'metadata' keys, or None if not found
+            Document with `id`, `text`, and `metadata`, or `None` when the
+            identifier is not present.
         """
         result = self.collection.get(ids=[doc_id])
 
@@ -111,7 +133,11 @@ class Database:
         }
 
     def reset(self) -> None:
-        """Delete all documents from the collection."""
+        """Delete all documents from the collection.
+
+        Returns:
+            None.
+        """
         self.client.delete_collection(name=self.collection.name)
         self.collection = self.client.get_or_create_collection(
             name=self.collection.name,

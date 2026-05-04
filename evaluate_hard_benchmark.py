@@ -9,10 +9,20 @@ import time
 from pathlib import Path
 from typing import Any
 
-from noetic_systems import Database, Reconciler
+from noetic_systems.database import Database
+from noetic_systems.reconciliation.engine import Reconciler
 
 
 def target_doc_ids(data: dict[str, Any], case_id: str) -> set[str]:
+    """Return target document ids for a benchmark case.
+
+    Args:
+        data: Benchmark payload.
+        case_id: Case identifier.
+
+    Returns:
+        Document ids marked as target evidence for the case.
+    """
     return {
         doc["id"]
         for doc in data["corpus"]
@@ -22,7 +32,14 @@ def target_doc_ids(data: dict[str, Any], case_id: str) -> set[str]:
 
 
 def strip_custom_metadata(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return corpus with benchmark-only metadata removed."""
+    """Return corpus with benchmark-only metadata removed.
+
+    Args:
+        data: Benchmark payload containing a `corpus` list.
+
+    Returns:
+        Corpus documents retaining only ordinary deployable metadata.
+    """
     stripped = []
     for doc in data["corpus"]:
         metadata = {
@@ -44,21 +61,45 @@ def docs_target_score(
     doc_ids: list[str] | tuple[str, ...],
     target_ids: set[str],
 ) -> float:
+    """Calculate fraction of document ids that are target evidence.
+
+    Args:
+        doc_ids: Retrieved or basin-assigned document ids.
+        target_ids: Gold target document ids.
+
+    Returns:
+        Fraction of `doc_ids` present in `target_ids`.
+    """
     if not doc_ids:
         return 0.0
     return sum(1 for doc_id in doc_ids if doc_id in target_ids) / len(doc_ids)
 
 
 def basin_summary(basin) -> str:
+    """Format a basin summary for diagnostic output.
+
+    Args:
+        basin: Basin-like object with score and metric attributes.
+
+    Returns:
+        Compact human-readable basin summary.
+    """
     return (
         f"{basin.label} score={basin.score:.3f} energy={basin.energy:.3f} "
-        f"support={basin.support} src={basin.source_breadth:.2f} "
-        f"doc={basin.document_breadth:.2f} dup={basin.duplicate_penalty:.2f} "
-        f"meta={basin.metadata_bonus:.2f}"
+        f"support={basin.support} dup={basin.duplicate_penalty:.2f}"
     )
 
 
 def percentile(values: list[float], pct: float) -> float:
+    """Return a percentile from a list of numeric values.
+
+    Args:
+        values: Numeric values.
+        pct: Percentile as a fraction in the `[0, 1]` interval.
+
+    Returns:
+        Requested percentile value, or `0.0` for an empty list.
+    """
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -67,6 +108,11 @@ def percentile(values: list[float], pct: float) -> float:
 
 
 def main() -> None:
+    """Run the hard benchmark evaluation CLI.
+
+    Returns:
+        None.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data-path",
@@ -83,12 +129,6 @@ def main() -> None:
         "--blind",
         action="store_true",
         help="strip custom benchmark labels before indexing",
-    )
-    parser.add_argument(
-        "--community-method",
-        choices=["spectral", "greedy"],
-        default="spectral",
-        help="community detector to use for basin construction",
     )
     parser.add_argument(
         "--candidate-limit",
@@ -172,7 +212,6 @@ def main() -> None:
             candidate_limit=args.candidate_limit,
             result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
-            community_method=args.community_method,
             return_ranker=args.return_ranker,
         )
         reconcile_times.append((time.perf_counter() - reconcile_start) * 1000)
@@ -250,7 +289,6 @@ def main() -> None:
     total = len(case_items)
     metrics = {
         "mode": "blind" if args.blind else "labeled",
-        "community_method": args.community_method,
         "documents": data["metadata"]["total_documents"],
         "cases": total,
         "candidate_limit": args.candidate_limit,
@@ -273,7 +311,6 @@ def main() -> None:
 
     print("=== HARD RAG BENCHMARK ===")
     print(f"mode: {metrics['mode']}")
-    print(f"community method: {metrics['community_method']}")
     print(f"return ranker: {metrics['return_ranker']}")
     print(f"candidate/result limit: {args.candidate_limit}/{args.result_limit}")
     print(f"edge threshold: {args.edge_threshold:.2f}")

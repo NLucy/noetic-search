@@ -3,7 +3,7 @@
 The benchmark tests decision-grade retrieval under adversarial evidence.
 
 It mixes plausible decoys, stale approvals, duplicated notes, distributed target
-evidence, and unrelated cross-domain rubbish. Blind mode strips benchmark-only labels
+evidence, and unrelated cross-domain distractor documents. Blind mode strips benchmark-only labels
 before indexing.
 
 ## Standard Run
@@ -43,7 +43,7 @@ Generate a larger synthetic run:
 ```bash
 uv run python tests/data/generate_hard_rag_benchmark.py \
   --variants 20 \
-  --rubbish 50000 \
+  --distractors 50000 \
   --output tests/data/hard_rag_benchmark_large.json
 ```
 

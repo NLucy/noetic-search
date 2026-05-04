@@ -1,20 +1,29 @@
+"""Tests for Responses API message and payload construction."""
+
 import unittest
 
-from noetic_systems import Database, demo_corpus
-from noetic_systems.llm import (
+from noetic_systems.corpus import demo_corpus
+from noetic_systems.database import Database
+from noetic_systems.llm.experiment import build_llm_experiment
+from noetic_systems.llm.messages import (
     AssistantMessage,
     DeveloperMessage,
-    OpenAIResponsesClient,
+    serialize_messages,
     ToolMessage,
     UserMessage,
-    build_llm_experiment,
 )
-from noetic_systems.llm.messages import serialize_messages
-from noetic_systems.llm.openai_client import load_env_file
+from noetic_systems.llm.openai_client import load_env_file, OpenAIResponsesClient
 
 
 class LLMMessageTests(unittest.TestCase):
+    """Validate LLM message serialization and payload building."""
+
     def test_serializes_responses_api_messages(self) -> None:
+        """Verify message classes serialize to Responses API input items.
+
+        Returns:
+            None.
+        """
         messages = [
             DeveloperMessage("Use only provided evidence."),
             UserMessage("Answer the question."),
@@ -33,6 +42,11 @@ class LLMMessageTests(unittest.TestCase):
         self.assertEqual(serialized[3]["call_id"], "call_123")
 
     def test_builds_top_k_and_evidence_field_payloads(self) -> None:
+        """Verify all LLM comparison surfaces build request payloads.
+
+        Returns:
+            None.
+        """
         db = Database(collection_name="test_llm_payloads", reset=True)
         db.add_documents(demo_corpus())
 
@@ -62,6 +76,11 @@ class LLMMessageTests(unittest.TestCase):
         db.reset()
 
     def test_loads_local_env_file_without_overriding_existing_values(self) -> None:
+        """Verify `.env` loading preserves existing environment values.
+
+        Returns:
+            None.
+        """
         from os import environ
         from tempfile import TemporaryDirectory
         from pathlib import Path

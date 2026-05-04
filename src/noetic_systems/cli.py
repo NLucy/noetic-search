@@ -1,12 +1,15 @@
+"""Command-line interface for demos and LLM payload inspection."""
+
 from __future__ import annotations
 
 import argparse
 import json
 
-from .corpus import demo_corpus
-from .database import Database
-from .llm import OpenAIResponsesClient, build_llm_experiment
-from .reconciliation import Reconciler
+from noetic_systems.corpus import demo_corpus
+from noetic_systems.database import Database
+from noetic_systems.llm.experiment import build_llm_experiment
+from noetic_systems.llm.openai_client import OpenAIResponsesClient
+from noetic_systems.reconciliation.engine import Reconciler
 
 
 QUERIES = {
@@ -18,6 +21,11 @@ QUERIES = {
 
 
 def main() -> None:
+    """Parse command-line arguments and dispatch the selected command.
+
+    Returns:
+        None.
+    """
     parser = argparse.ArgumentParser(prog="noetic")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -61,6 +69,14 @@ def main() -> None:
 
 
 def run_demo(query_name: str) -> None:
+    """Run the local reconciliation demo for a named query.
+
+    Args:
+        query_name: Key from `QUERIES` identifying the demo query.
+
+    Returns:
+        None.
+    """
     query_text = QUERIES[query_name]
 
     database = Database(collection_name="noetic_demo", reset=True)
@@ -91,6 +107,20 @@ def run_llm_demo(
     call_api: bool,
     model: str | None,
 ) -> None:
+    """Build or send an LLM comparison payload for a demo query.
+
+    Args:
+        query_name: Key from `QUERIES` identifying the demo query.
+        mode: Retrieval surface to prepare: `top-k`, `basin`, or
+            `evidence-field`.
+        call_api: Whether to call the Responses API instead of printing the
+            request payload.
+        model: Optional model id. When omitted, the client default or
+            `NOETIC_OPENAI_MODEL` is used.
+
+    Returns:
+        None.
+    """
     query_text = QUERIES[query_name]
     database = Database(collection_name="noetic_llm_demo", reset=True)
     database.add_documents(demo_corpus())

@@ -8,21 +8,36 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
-from .database import Database
-from .semantic_search import SearchResult
+from noetic_systems.database import Database
+from noetic_systems.search.semantic import SearchResult
 
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 def tokenize(text: str) -> list[str]:
-    """Tokenize text into lowercase alphanumeric tokens."""
+    """Tokenize text into lowercase alphanumeric terms.
+
+    Args:
+        text: Text to tokenize.
+
+    Returns:
+        Lowercase alphanumeric tokens.
+    """
     return TOKEN_PATTERN.findall(text.lower())
 
 
 @dataclass
 class BM25Index:
-    """BM25 index for a document corpus."""
+    """BM25 index for a document corpus.
+
+    Attributes:
+        doc_ids: Document identifiers aligned with token and length arrays.
+        doc_tokens: Tokenized documents.
+        doc_lengths: Token counts for each document.
+        avg_doc_length: Mean token count across indexed documents.
+        term_doc_freqs: Number of documents containing each term.
+    """
 
     doc_ids: list[str]
     doc_tokens: list[list[str]]
@@ -43,17 +58,24 @@ class LexicalSearch:
         """Initialize BM25 search.
 
         Args:
-            database: Database instance with populated collection
-            k1: BM25 term frequency saturation parameter (default: 1.5)
-            b: BM25 length normalization parameter (default: 0.75)
+            database: Database instance with a populated collection.
+            k1: BM25 term-frequency saturation parameter.
+            b: BM25 length-normalization parameter.
+
+        Returns:
+            None.
         """
         self.database = database
         self.k1 = k1
         self.b = b
-        self.index = self._build_index()
+        self.index = self.build_index()
 
-    def _build_index(self) -> BM25Index:
-        """Build BM25 index from database documents."""
+    def build_index(self) -> BM25Index:
+        """Build a BM25 index from database documents.
+
+        Returns:
+            Index containing tokenized documents and corpus statistics.
+        """
         result = self.database.collection.get()
 
         doc_ids = result["ids"]
@@ -77,8 +99,16 @@ class LexicalSearch:
             term_doc_freqs=term_doc_freqs,
         )
 
-    def _bm25_score(self, query_tokens: list[str], doc_idx: int) -> float:
-        """Calculate BM25 score for a document."""
+    def bm25_score(self, query_tokens: list[str], doc_idx: int) -> float:
+        """Calculate a BM25 score for one indexed document.
+
+        Args:
+            query_tokens: Tokenized query terms.
+            doc_idx: Position of the target document in the BM25 index.
+
+        Returns:
+            BM25 relevance score.
+        """
         score = 0.0
         doc_tokens = self.index.doc_tokens[doc_idx]
         doc_length = self.index.doc_lengths[doc_idx]
@@ -108,12 +138,12 @@ class LexicalSearch:
         """Perform BM25 lexical search.
 
         Args:
-            query: Query text to search for
-            limit: Maximum number of results to return
-            where: Optional metadata filter (e.g., {"source": "lab"})
+            query: Query text to search for.
+            limit: Maximum number of results to return.
+            where: Optional metadata filter, such as `{"source": "lab"}`.
 
         Returns:
-            List of SearchResult objects, sorted by BM25 score (highest first)
+            Search results sorted by descending BM25 score.
         """
         query_tokens = tokenize(query)
 
@@ -126,13 +156,13 @@ class LexicalSearch:
 
             if where:
                 doc_metadata = self.database.get_by_id(doc_id)
-                if doc_metadata and not self._matches_filter(
+                if doc_metadata and not self.matches_filter(
                     doc_metadata["metadata"],
                     where,
                 ):
                     continue
 
-            score = self._bm25_score(query_tokens, doc_idx)
+            score = self.bm25_score(query_tokens, doc_idx)
             scores.append((doc_idx, score))
 
         scores.sort(key=lambda x: x[1], reverse=True)
@@ -154,8 +184,16 @@ class LexicalSearch:
 
         return results
 
-    def _matches_filter(self, metadata: dict[str, Any], where: dict[str, Any]) -> bool:
-        """Check if metadata matches filter criteria."""
+    def matches_filter(self, metadata: dict[str, Any], where: dict[str, Any]) -> bool:
+        """Check whether metadata satisfies an equality filter.
+
+        Args:
+            metadata: Metadata attached to a candidate document.
+            where: Required key-value pairs.
+
+        Returns:
+            `True` when every requested key equals the requested value.
+        """
         for key, value in where.items():
             if metadata.get(key) != value:
                 return False

@@ -13,18 +13,32 @@ class Message(Protocol):
     """Serializable input item for the Responses API."""
 
     def to_response_input(self) -> dict[str, Any]:
-        """Return this message as a Responses API input item."""
+        """Return this message as a Responses API input item.
+
+        Returns:
+            Dictionary accepted in a Responses API `input` list.
+        """
         ...
 
 
 @dataclass(frozen=True)
 class TextMessage:
-    """Text message with a Responses API role."""
+    """Text message with a Responses API role.
+
+    Attributes:
+        content: Message text.
+        role: Responses API role.
+    """
 
     content: str
     role: Role
 
     def to_response_input(self) -> dict[str, Any]:
+        """Return this text message as a Responses API input item.
+
+        Returns:
+            Dictionary with `type`, `role`, and text `content` fields.
+        """
         return {
             "type": "message",
             "role": self.role,
@@ -71,12 +85,22 @@ class UserMessage(TextMessage):
 
 @dataclass(frozen=True)
 class ToolMessage:
-    """Function tool output item for the Responses API."""
+    """Function tool output item for the Responses API.
+
+    Attributes:
+        call_id: Identifier of the tool call being answered.
+        output: Tool output text.
+    """
 
     call_id: str
     output: str
 
     def to_response_input(self) -> dict[str, Any]:
+        """Return this tool output as a Responses API input item.
+
+        Returns:
+            Function-call output dictionary.
+        """
         return {
             "type": "function_call_output",
             "call_id": self.call_id,
@@ -85,5 +109,12 @@ class ToolMessage:
 
 
 def serialize_messages(messages: list[Message]) -> list[dict[str, Any]]:
-    """Serialize messages to Responses API input items."""
+    """Serialize messages to Responses API input items.
+
+    Args:
+        messages: Message objects implementing `to_response_input`.
+
+    Returns:
+        Responses API input dictionaries.
+    """
     return [message.to_response_input() for message in messages]

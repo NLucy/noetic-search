@@ -244,7 +244,7 @@ CASES = [
 ]
 
 
-RUBBISH_DOMAINS = [
+DISTRACTOR_DOMAINS = [
     "gardening",
     "gaming",
     "travel",
@@ -257,7 +257,7 @@ RUBBISH_DOMAINS = [
     "astrology",
 ]
 
-RUBBISH_SENTENCES = [
+DISTRACTOR_SENTENCES = [
     "This note repeats an unrelated status update with confident language but no operational evidence.",
     "A discussion thread mentions launch readiness, safety, approval, and deployment without naming the relevant system.",
     "The archive contains a stale dashboard screenshot and a vague statement that everything looks green.",
@@ -293,7 +293,15 @@ VARIANT_MARKERS = [
 
 
 def variant_case(case: dict[str, Any], variant_index: int) -> dict[str, Any]:
-    """Create a case variant without adding runtime-only semantic labels."""
+    """Create a deterministic case variant.
+
+    Args:
+        case: Base decision case.
+        variant_index: Variant number. Zero returns the original case fields.
+
+    Returns:
+        Case dictionary with variant-specific identifiers and text.
+    """
     if variant_index == 0:
         return dict(case)
 
@@ -317,6 +325,14 @@ def variant_case(case: dict[str, Any], variant_index: int) -> dict[str, Any]:
 
 
 def case_documents(case: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate decoy, target, and noise documents for one case.
+
+    Args:
+        case: Decision case definition.
+
+    Returns:
+        Benchmark documents for the case.
+    """
     docs = []
     for index, text in enumerate(case["decoys"], 1):
         docs.append(
@@ -372,8 +388,16 @@ def case_documents(case: dict[str, Any]) -> list[dict[str, Any]]:
     return docs
 
 
-def rubbish_document(index: int) -> dict[str, Any]:
-    domain = random.choice(RUBBISH_DOMAINS)
+def distractor_document(index: int) -> dict[str, Any]:
+    """Generate one cross-domain distractor document.
+
+    Args:
+        index: Numeric document index used for the stable identifier.
+
+    Returns:
+        Distractor benchmark document.
+    """
+    domain = random.choice(DISTRACTOR_DOMAINS)
     action = random.choice(["launch", "deploy", "approve", "activate", "switch", "sign"])
     system = random.choice(
         [
@@ -389,27 +413,37 @@ def rubbish_document(index: int) -> dict[str, Any]:
     )
     text = (
         f"General {domain} note about whether to {action} the {system}. "
-        f"{random.choice(RUBBISH_SENTENCES)}"
+        f"{random.choice(DISTRACTOR_SENTENCES)}"
     )
     return {
-        "id": f"rubbish-{index:06d}",
+        "id": f"distractor-{index:06d}",
         "text": text,
         "metadata": {
             "domain": domain,
-            "case": "rubbish",
-            "stance": "rubbish",
+            "case": "distractor",
+            "stance": "distractor",
             "category": random.choice(["approval", "meeting", "history", "template"]),
             "source": random.choice(SOURCES),
-            "gold": "rubbish",
+            "gold": "distractor",
         },
     }
 
 
 def generate(
-    total_rubbish: int = 1200,
+    total_distractors: int = 1200,
     variants: int = 1,
     seed: int = 8128,
 ) -> dict[str, Any]:
+    """Generate the full adversarial benchmark payload.
+
+    Args:
+        total_distractors: Number of cross-domain distractor documents.
+        variants: Number of variants to create for each base decision case.
+        seed: Random seed for deterministic generation.
+
+    Returns:
+        Benchmark payload with `corpus`, `cases`, and `metadata`.
+    """
     random.seed(seed)
     corpus = []
     cases = {}
@@ -424,8 +458,8 @@ def generate(
                 "decoy_stance": case["decoy_stance"],
             }
 
-    for index in range(total_rubbish):
-        corpus.append(rubbish_document(index))
+    for index in range(total_distractors):
+        corpus.append(distractor_document(index))
 
     random.shuffle(corpus)
     return {
@@ -437,19 +471,24 @@ def generate(
             "case_count": len(CASES),
             "variant_count": variants,
             "eval_case_count": len(cases),
-            "rubbish_documents": total_rubbish,
+            "distractor_documents": total_distractors,
             "seed": seed,
         },
     }
 
 
 def main() -> None:
+    """Generate the benchmark from command-line arguments.
+
+    Returns:
+        None.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--rubbish",
+        "--distractors",
         type=int,
         default=1200,
-        help="number of cross-domain rubbish documents to generate",
+        help="number of cross-domain distractor documents to generate",
     )
     parser.add_argument(
         "--variants",
@@ -472,7 +511,7 @@ def main() -> None:
     args = parser.parse_args()
 
     output = generate(
-        total_rubbish=args.rubbish,
+        total_distractors=args.distractors,
         variants=args.variants,
         seed=args.seed,
     )

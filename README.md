@@ -80,7 +80,7 @@ target-heavy basin ranked first: 10/10
 ```
 
 The benchmark mixes ten decision domains with decoys, stale notes, duplicated
-approvals, unrelated rubbish, and distributed target evidence. Blind mode strips
+approvals, unrelated distractor documents, and distributed target evidence. Blind mode strips
 benchmark-only labels before indexing.
 
 ## Return Surfaces
@@ -95,7 +95,7 @@ The current implementation uses:
 
 - ChromaDB for storage and embeddings
 - BM25 plus vector retrieval for hybrid candidates
-- ordinary metadata and embedding similarity for graph edges
+- embedding, metadata, and near-duplicate signal contributions for graph weights
 - normalized-Laplacian eigendecomposition for spectral basin detection
 - fixed-step diffusion for graph energy propagation
 - specificity-first chunk ordering inside the winning basin
