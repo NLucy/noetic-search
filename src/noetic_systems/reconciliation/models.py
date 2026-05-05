@@ -13,15 +13,22 @@ support, and duplicate penalty. The winning basin is later copied with its
 documents ordered for return. These records are small enough to inspect directly
 in tests and rich enough to explain why a result was returned.
 
-The literal type defines the supported representative-chunk ranking strategies.
+Key variables:
+    `EvidenceEdge.source` and `EvidenceEdge.target`: Candidate ids connected by
+        a graph relationship.
+    `EvidenceEdge.type`: Signal family that created the edge, such as embedding
+        similarity or near-duplicate signal.
+    `EvidenceEdge.weight`: Non-negative relationship strength used in the
+        adjacency graph.
+    `Basin.score`: Final region-level score used to choose the winner.
+    `Basin.energy`: Total diffused retrieval energy inside the basin.
+    `Basin.documents`: Candidate ids assigned to the basin. Only the winner is
+        reordered for return.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
-
-ReturnRanker = Literal["specificity", "purifier"]
 
 
 @dataclass(frozen=True)
@@ -31,7 +38,7 @@ class EvidenceEdge:
     Attributes:
         source: Source document id.
         target: Target document id.
-        type: Edge category, such as embedding, metadata, or duplicate signal.
+        type: Edge category, such as embedding or duplicate signal.
         weight: Non-negative edge weight.
         reason: Human-readable explanation for inspection output.
     """

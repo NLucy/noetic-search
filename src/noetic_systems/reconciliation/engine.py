@@ -1,22 +1,37 @@
 """Orchestration engine for Noetic reconciliation.
 
 The engine owns stateful dependencies, retrieves a broad hybrid candidate set,
-and then calls the functional graph, spectral, seeding, diffusion, basin, and result
+and then calls the functional graph, spectral, diffusion, basin, and result
 modules in order. We keep orchestration separate from the math so the algorithm
 can be inspected step by step and each methodology can be tested without a large
 stateful class.
 
 The central method is `Reconciler.reconcile()`. It retrieves more candidates
 than it plans to return, selects a graph-sized working set, builds the local
-evidence graph, detects communities, seeds and diffuses energy, scores basins,
-and returns a `ReconciliationResult`. Each intermediate structure is ordinary
-Python data: lists of search results, adjacency dictionaries, community
+evidence graph, detects communities, initializes and diffuses energy, scores
+basins, and returns a `ReconciliationResult`. Each intermediate structure is
+ordinary Python data: lists of search results, adjacency dictionaries, community
 assignments, energy dictionaries, basin records, and result payloads.
 
 Keeping this file thin is important. If the engine starts accumulating scoring
 rules or matrix logic, the method becomes hard to audit. The engine should answer
 "what happens next?" while the specialized modules answer "how is this step
 computed?"
+
+Key variables:
+    `candidate_limit`: Number of first-stage hybrid results retrieved for recall.
+        This is intentionally larger than the return count.
+    `result_limit`: Number of retrieved candidates admitted into the local graph.
+        This bounds the query-time graph computation.
+    `edge_threshold`: Minimum embedding similarity used by graph construction.
+    `diffusion_steps`: Number of diffusion time steps run after energy
+        initialization.
+    `damping`: Fraction of node energy allowed to move across graph edges during
+        each diffusion step.
+    `graph_candidates`: The actual working field used for graph construction,
+        spectral detection, diffusion, basin scoring, and ranking.
+    `communities`: Spectral basin assignment for each graph candidate.
+    `basins`: Scored evidence regions sorted by descending basin score.
 """
 
 from __future__ import annotations
@@ -24,9 +39,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 from noetic_systems.database import Database
-from noetic_systems.reconciliation.basins import build_basins
-from noetic_systems.reconciliation.candidates import select_graph_candidates
-from noetic_systems.reconciliation.diffusion import diffuse
+from noetic_systems.reconciliation.basins import build_basins, calculate_uncertainty
+from noetic_systems.reconciliation.diffusion import diffuse, seed_energy
 from noetic_systems.reconciliation.graph import (
     EMBEDDING_EDGE_THRESHOLD,
     build_evidence_graph,
@@ -36,14 +50,11 @@ from noetic_systems.reconciliation.metrics import (
     calculate_modularity,
     document_specificity,
     document_support,
-    query_echo,
 )
-from noetic_systems.reconciliation.models import Basin, ReturnRanker
+from noetic_systems.reconciliation.models import Basin
 from noetic_systems.reconciliation.ranking import rank_basin_documents
 from noetic_systems.reconciliation.result import ReconciliationResult
-from noetic_systems.reconciliation.seeding import seed_energy
 from noetic_systems.reconciliation.spectral import detect_communities
-from noetic_systems.reconciliation.uncertainty import calculate_uncertainty
 from noetic_systems.search.hybrid import HybridSearch
 
 
@@ -98,7 +109,6 @@ class Reconciler:
         diffusion_steps: int = 10,
         damping: float = 0.85,
         edge_threshold: float = EMBEDDING_EDGE_THRESHOLD,
-        return_ranker: ReturnRanker = "specificity",
     ) -> ReconciliationResult:
         """Run graph-based reconciliation over hybrid candidates.
 
@@ -109,7 +119,6 @@ class Reconciler:
             diffusion_steps: Number of fixed diffusion iterations.
             damping: Fraction of energy allowed to move across graph edges.
             edge_threshold: Minimum embedding similarity for a semantic edge.
-            return_ranker: Strategy for ranking documents inside the winning basin.
 
         Returns:
             Reconciliation result containing basins, chunk scores, and graph metrics.
@@ -118,15 +127,16 @@ class Reconciler:
         if not candidates:
             return empty_result(query)
 
-        # The graph is built from a broad-but-bounded field, not from raw top-k.
-        graph_candidates = select_graph_candidates(candidates, result_limit)
+        # Candidate admission is deliberately boring: broad retrieval provides
+        # recall, then the local graph gets a fixed-size working field.
+        graph_candidates = candidates[:result_limit]
         doc_index = {result.id: result for result in graph_candidates}
         graph, edges = build_evidence_graph(self.database, doc_index, edge_threshold)
         communities = detect_communities(graph)
         if not communities:
             return empty_result(query)
 
-        # Diffusion is a discrete-time propagation over the fixed evidence graph.
+        # Initialize from retrieval rank, then let confidence move over fixed edges.
         energy = seed_energy(graph_candidates)
         for _ in range(diffusion_steps):
             energy = diffuse(energy, graph, damping)
@@ -141,19 +151,15 @@ class Reconciler:
         dispersion = calculate_dispersion(energy)
         uncertainty = calculate_uncertainty(basins, modularity, dispersion)
 
-        # Only the winning basin needs final representative chunk ordering.
+        # Only the winning basin needs final representative chunk ordering; the
+        # other basins remain available as competitors in the inspection field.
         specificity = document_specificity(graph_candidates)
         query_score = {result.id: result.score for result in graph_candidates}
         support = document_support(graph)
-        echo = query_echo(query, graph_candidates)
         ranked_winner_documents = rank_basin_documents(
             list(basins[0].documents),
             energy,
             specificity,
-            query_score,
-            support,
-            echo,
-            return_ranker,
         )
         winner = replace(basins[0], documents=tuple(ranked_winner_documents))
         basins = [winner, *basins[1:]]
@@ -175,7 +181,6 @@ class Reconciler:
                 for doc_id, value in query_score.items()
             },
             document_support={doc_id: float(value) for doc_id, value in support.items()},
-            document_echo={doc_id: float(value) for doc_id, value in echo.items()},
             edges=tuple(edges),
         )
 
@@ -200,6 +205,5 @@ def empty_result(query: str) -> ReconciliationResult:
         document_specificity={},
         document_query_score={},
         document_support={},
-        document_echo={},
         edges=(),
     )

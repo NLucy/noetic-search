@@ -16,6 +16,23 @@ The split is accepted only when it is large enough and improves modularity. That
 guard matters because eigendecomposition will always produce vectors, even when
 the candidate graph does not contain a meaningful separation. If no useful split
 exists, the graph remains one basin.
+
+Key variables:
+    `graph`: Weighted adjacency mapping over the local candidate field.
+    `nodes`: Ordered document ids in the current subgraph. This order is carried
+        into the matrix so eigenvector positions can be mapped back to chunks.
+    `adjacency`: Dense matrix form of `graph`, usually called `A`.
+    `degrees`: Row sums of `adjacency`. A node with more or stronger edges has
+        a larger degree.
+    `normalized`: The normalized graph Laplacian,
+        `I - D^-1/2 A D^-1/2`. It balances high-degree and low-degree nodes
+        before eigendecomposition.
+    `fiedler`: The second-smallest eigenvector of the normalized Laplacian. Its
+        values provide the candidate split.
+    `SPECTRAL_MIN_SPLIT_SIZE`: Smallest accepted basin size. This prevents tiny
+        fragments from becoming fake discoveries.
+    `SPECTRAL_MIN_SPLIT_MODULARITY`: Required modularity improvement for a split
+        to be accepted.
 """
 
 from __future__ import annotations
@@ -28,20 +45,6 @@ SPECTRAL_MIN_SPLIT_MODULARITY = 0.10
 
 
 def detect_communities(
-    graph: dict[str, dict[str, float]],
-) -> dict[str, int]:
-    """Detect communities with normalized-Laplacian spectral partitioning.
-
-    Args:
-        graph: Weighted adjacency mapping.
-
-    Returns:
-        Mapping from document id to community id.
-    """
-    return detect_spectral_communities(graph)
-
-
-def detect_spectral_communities(
     graph: dict[str, dict[str, float]],
 ) -> dict[str, int]:
     """Detect communities by bisecting the normalized Laplacian.
@@ -58,6 +61,8 @@ def detect_spectral_communities(
 
     partitions = spectral_partition(nodes, graph)
     communities: dict[str, int] = {}
+    # Flatten accepted partitions into the simple doc_id -> basin_id mapping used
+    # by basin scoring.
     for comm_id, partition in enumerate(partitions):
         for node in partition:
             communities[node] = comm_id
@@ -90,8 +95,8 @@ def spectral_partition(
     left, right = fiedler_split(nodes, graph)
     if not left or not right:
         return [nodes]
-    # Spectral vectors always exist; these guards reject splits that are too small
-    # or do not improve the graph's community structure enough to be useful.
+    # Eigenvectors always exist; useful basin boundaries do not. These guards
+    # keep a mathematical split from becoming a product decision too early.
     if min(len(left), len(right)) < min_size:
         return [nodes]
     if split_modularity(left, right, graph) <= SPECTRAL_MIN_SPLIT_MODULARITY:
@@ -133,7 +138,8 @@ def fiedler_split(
     if float(degrees.sum()) == 0.0:
         return [], []
 
-    # L_norm = I - D^-1/2 A D^-1/2 balances nodes by degree before eigenanalysis.
+    # Build L_norm = I - D^-1/2 A D^-1/2. This is the object we eigendecompose;
+    # `D - A` is the simpler combinatorial version discussed in the docs.
     inv_sqrt = np.zeros_like(degrees)
     nonzero = degrees > 0
     inv_sqrt[nonzero] = 1.0 / np.sqrt(degrees[nonzero])
@@ -145,7 +151,7 @@ def fiedler_split(
         return [], []
 
     # The Fiedler vector is the first nontrivial graph coordinate after the
-    # constant eigenvector; splitting on it proposes a natural basin boundary.
+    # constant eigenvector; splitting on its values proposes a basin boundary.
     fiedler = eigenvectors[:, 1]
     threshold = float(np.median(fiedler))
     left = [
@@ -233,4 +239,3 @@ def split_modularity(
                 expected = (source_degree * target_degree) / (2.0 * total_weight)
                 modularity += weight - expected
     return float(modularity / (2.0 * total_weight))
-

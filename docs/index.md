@@ -25,7 +25,6 @@
       <pre>query -> candidates
       -> graph
       -> spectral
-      -> seeding
       -> diffusion
       -> basins
       -> uncertainty

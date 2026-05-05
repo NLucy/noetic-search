@@ -8,12 +8,12 @@ payload.
 
 The package is intentionally organized by methodology. Graph construction
 defines the local structure, spectral partitioning finds coherent regions,
-seeding converts retrieval rank into initial graph energy, diffusion measures
-how retrieval confidence settles inside those regions, basin scoring chooses the
-strongest region, uncertainty reports structural risk, ranking selects
-representative chunks from the winner, and result formatting presents the
-outcome to an LLM or caller. This keeps the search idea inspectable: every stage
-has a specific mathematical role and a concrete artifact that can be tested.
+diffusion initializes retrieval energy and measures how it settles inside those
+regions, basin scoring chooses the strongest region and reports structural risk,
+ranking selects representative chunks from the winner, and result formatting
+presents the outcome to an LLM or caller. This keeps the search idea
+inspectable: every stage has a specific mathematical role and a concrete
+artifact that can be tested.
 
 Import concrete modules directly, for example
 `noetic_systems.reconciliation.engine.Reconciler` or

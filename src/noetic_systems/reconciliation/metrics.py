@@ -1,9 +1,8 @@
 """Graph and basin metrics used by reconciliation.
 
 Metrics translate graph structure into simple, inspectable signals: support,
-specificity, query echo, cohesion, dispersion, and modularity. We use these
-measures to prefer basins that are coherent and specific without being merely
-repetitive.
+specificity, cohesion, dispersion, and modularity. We use these measures to
+prefer basins that are coherent and specific without being merely repetitive.
 
 The metrics are deliberately modest. They are not trying to decide truth; they
 describe the shape of the retrieved evidence. Support measures how connected a
@@ -11,9 +10,22 @@ chunk is, specificity rewards terms that distinguish a chunk from the rest of
 the candidate set, cohesion measures internal edge strength, and duplicate
 penalty reduces regions dominated by repeated material.
 
-Structural uncertainty is calculated in
-`noetic_systems.reconciliation.uncertainty`. This module provides the component
-measurements that uncertainty and basin scoring depend on.
+Structural uncertainty is calculated in `noetic_systems.reconciliation.basins`.
+This module provides the component measurements that uncertainty and basin
+scoring depend on.
+
+Key variables:
+    `support`: Sum of incident edge weights for a document. High support means a
+        chunk is well connected inside the local graph.
+    `specificity`: Local IDF-like score. It rewards words that distinguish a
+        chunk from the rest of the retrieved candidate field.
+    `document_frequency`: Count of candidate chunks containing each token.
+    `duplicate_penalty`: Penalty derived from very high internal edge weights.
+    `cohesion`: Mean internal edge weight inside a basin.
+    `modularity`: Quality of the community assignment compared with a
+        degree-preserving null model.
+    `dispersion`: Spread of the final energy distribution. High dispersion means
+        energy did not settle cleanly.
 """
 
 from __future__ import annotations
@@ -34,41 +46,11 @@ def document_support(graph: dict[str, dict[str, float]]) -> dict[str, float]:
     Returns:
         Sum of incident edge weights by document id.
     """
+    # Support is simply weighted degree. It is structural, not a metadata score.
     return {
         doc_id: float(sum(neighbors.values()))
         for doc_id, neighbors in graph.items()
     }
-
-
-def query_echo(
-    query: str,
-    results: list[SearchResult],
-) -> dict[str, float]:
-    """Estimate how much candidates echo the query wording.
-
-    Args:
-        query: Query text.
-        results: Candidate search results.
-
-    Returns:
-        Query-echo score by document id.
-    """
-    query_tokens = set(tokens(query))
-    if not query_tokens:
-        return {result.id: 0.0 for result in results}
-
-    echo: dict[str, float] = {}
-    for result in results:
-        result_tokens = set(tokens(result.text))
-        if not result_tokens:
-            echo[result.id] = 0.0
-            continue
-        # Query echo is useful but risky: strong echo can be boilerplate, so later
-        # ranking may penalize it rather than treat it as pure relevance.
-        query_overlap = len(result_tokens & query_tokens) / len(query_tokens)
-        text_overlap = len(result_tokens & query_tokens) / len(result_tokens)
-        echo[result.id] = float(0.65 * query_overlap + 0.35 * text_overlap)
-    return echo
 
 
 def document_specificity(results: list[SearchResult]) -> dict[str, float]:
@@ -108,7 +90,7 @@ def document_specificity(results: list[SearchResult]) -> dict[str, float]:
 
 
 def tokens(text: str) -> list[str]:
-    """Tokenize text for internal specificity and echo metrics.
+    """Tokenize text for internal specificity metrics.
 
     Args:
         text: Text to tokenize.
@@ -136,6 +118,7 @@ def duplicate_penalty(
         return 0.0
     near_duplicate_pairs = 0
     possible_edges = 0
+    # Near-duplicate relationships are encoded as very high graph weights.
     for i, left in enumerate(doc_ids):
         for right in doc_ids[i + 1:]:
             possible_edges += 1
@@ -195,7 +178,8 @@ def calculate_modularity(
 
     modularity = 0.0
     # Standard modularity: observed internal edge weight minus expected internal
-    # weight under a degree-preserving null model.
+    # weight under a degree-preserving null model. This says whether the detected
+    # basins are better than what node degrees alone would imply.
     for node1, comm1 in communities.items():
         for node2, comm2 in communities.items():
             if comm1 != comm2:

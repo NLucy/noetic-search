@@ -4,7 +4,7 @@
     <h1>How Noetic Search turns retrieved chunks into a selected evidence basin.</h1>
     <p>
       The pipeline follows the implementation order:
-      <code>candidates -> graph -> spectral -> seeding -> diffusion -> basins -> uncertainty -> ranking -> result</code>.
+      <code>candidates -> graph -> spectral -> diffusion -> basins -> uncertainty -> ranking -> result</code>.
       Each step has a narrow mathematical role and a concrete artifact.
     </p>
   </section>
@@ -52,15 +52,16 @@
           <h3>Mechanics</h3>
           <p>
             Each candidate becomes a node. Each pair can receive one weighted
-            evidence connection from embedding similarity, ordinary metadata
-            when present, and near-duplicate signal.
+            evidence connection from embedding similarity and near-duplicate
+            signal. Metadata remains available on returned chunks, but it does
+            not create graph edges.
           </p>
         </div>
         <p class="math-example">
           Two lower-ranked chunks can matter more together than two higher-ranked
           chunks that are isolated or repetitive.
         </p>
-        <pre>A[i,j] = similarity_signal + metadata_signal + duplicate_signal</pre>
+        <pre>A[i,j] = similarity_signal + duplicate_signal</pre>
         <div class="symbols">
           <div><code>A</code><span>Weighted adjacency matrix.</span></div>
           <div><code>A[i,j]</code><span>Relationship strength between chunks i and j.</span></div>
@@ -87,9 +88,11 @@
           <p>
             Build <code>A</code>, the weighted adjacency matrix. Build
             <code>D</code>, whose diagonal stores total edge weight per node.
-            Subtract to build <code>L = D - A</code>. Eigendecomposition uses
-            <code>L</code> to find the Fiedler vector, whose values propose
-            basin boundaries.
+            Subtract to build <code>L = D - A</code>, the combinatorial graph
+            Laplacian. In production, Noetic uses the normalized graph
+            Laplacian to reduce degree bias. Eigendecomposition uses that
+            Laplacian to find the Fiedler vector, whose values propose basin
+            boundaries.
           </p>
         </div>
         <div class="deep-dive">
@@ -111,26 +114,33 @@
             </p>
           </div>
           <div class="math-block">
-            <h3>Build L</h3>
+            <h3>Build the Laplacian</h3>
             <p>
-              <code>L = D - A</code> is matrix construction. It encodes the rule
-              for measuring weighted neighbor disagreement later; it is not
-              itself a final disagreement score.
+              <code>L = D - A</code> is called the combinatorial graph
+              Laplacian. It is matrix construction: the result is not a finished
+              separation and not a final disagreement score. It is the graph
+              structure rewritten as a matrix that encodes how weighted neighbor
+              disagreement should be measured.
             </p>
           </div>
           <div class="math-block">
             <h3>Use L</h3>
             <p>
-              Eigendecomposition finds graph-native value patterns. The Fiedler
-              vector is the first useful nontrivial pattern. Splitting its
-              values proposes fixed basin boundaries.
+              Eigendecomposition asks which value patterns are natural for this
+              Laplacian. An eigenvector is a stable pattern for the matrix; its
+              eigenvalue says how costly or unsmooth that pattern is on the
+              graph. The smallest pattern is usually constant and does not split
+              anything. The second-smallest pattern is the Fiedler vector. Its
+              values give the first useful low-cost direction of separation, so
+              splitting those values proposes fixed basin boundaries.
             </p>
           </div>
         </div>
         <pre>A = weighted edges
 D[i,i] = total edge weight touching node i
-L = D - A
-Fiedler vector = second-smallest eigenvector of L
+L = D - A  (combinatorial graph Laplacian)
+normalized Laplacian = degree-balanced version used for splitting
+Fiedler vector = second-smallest eigenvector
 split Fiedler values -> candidate regions</pre>
         <p class="say-it">
           Spectral detects basin boundaries. Diffusion does not create or redraw
@@ -140,52 +150,31 @@ split Fiedler values -> candidate regions</pre>
     </article>
 
     <article class="math-item">
-      <div class="math-tag">4. Seeding</div>
+      <div class="math-tag">4. Diffusion</div>
       <div class="math-section">
-        <h2>Turn retrieval rank into energy for diffusion.</h2>
+        <h2>Initialize and redistribute retrieval energy over the fixed graph.</h2>
         <div class="math-block">
           <h3>Intuition</h3>
           <p>
             Hybrid rank should matter because retrieval did useful work, but it
-            should not be final truth. Seeding converts rank and score into the
-            starting energy vector.
+            should not be final truth. Diffusion starts from that retrieval
+            signal, then asks where confidence settles after moving through
+            evidence relationships.
           </p>
         </div>
         <div class="math-block">
           <h3>Mechanics</h3>
           <p>
-            Each candidate receives seed energy from its retrieval score,
-            discounted by rank. The seed vector is normalized to sum to
-            <code>1.0</code>.
-          </p>
-        </div>
-        <pre>seed_i = retrieval_score_i / (rank_i + 1)
-energy = seed / sum(seed)</pre>
-        <p class="say-it">Seeding creates the energy vector; diffusion uses it immediately.</p>
-      </div>
-    </article>
-
-    <article class="math-item">
-      <div class="math-tag">5. Diffusion</div>
-      <div class="math-section">
-        <h2>Redistribute seeded energy over the fixed graph.</h2>
-        <div class="math-block">
-          <h3>Intuition</h3>
-          <p>
-            Diffusion asks where retrieval confidence settles after moving
-            through evidence relationships. A supported lower-ranked chunk can
-            rise; an isolated high-ranked decoy can lose dominance.
-          </p>
-        </div>
-        <div class="math-block">
-          <h3>Mechanics</h3>
-          <p>
-            At each time step, a node keeps some energy and passes the rest to
+            Each candidate receives initial energy from its retrieval score,
+            discounted by rank and normalized to sum to <code>1.0</code>. At
+            each time step, a node keeps some energy and passes the rest to
             neighbors in proportion to edge weight. The energy is normalized
             after each step.
           </p>
         </div>
-        <pre>next_i = (1 - d) * energy_i
+        <pre>raw_i = retrieval_score_i / (rank_i + 1)
+energy_i = raw_i / sum(raw)
+next_i = (1 - d) * energy_i
        + d * sum_j energy_j * A[j,i] / degree_j</pre>
         <p class="say-it">
           Diffusion updates node energy. It does not detect basin boundaries.
@@ -194,7 +183,7 @@ energy = seed / sum(seed)</pre>
     </article>
 
     <article class="math-item">
-      <div class="math-tag">6. Basins</div>
+      <div class="math-tag">5. Basins</div>
       <div class="math-section">
         <h2>Score the fixed spectral basins.</h2>
         <div class="math-block">
@@ -223,7 +212,7 @@ energy = seed / sum(seed)</pre>
     </article>
 
     <article class="math-item">
-      <div class="math-tag">7. Uncertainty</div>
+      <div class="math-tag">6. Uncertainty</div>
       <div class="math-section">
         <h2>Measure whether the basin decision was clean.</h2>
         <div class="math-block">
@@ -246,7 +235,7 @@ energy = seed / sum(seed)</pre>
     </article>
 
     <article class="math-item">
-      <div class="math-tag">8. Ranking</div>
+      <div class="math-tag">7. Ranking</div>
       <div class="math-section">
         <h2>Choose representatives inside the winning basin.</h2>
         <div class="math-block">
@@ -268,7 +257,7 @@ energy = seed / sum(seed)</pre>
     </article>
 
     <article class="math-item">
-      <div class="math-tag">9. Result</div>
+      <div class="math-tag">8. Result</div>
       <div class="math-section">
         <h2>Expose chunks or the inspection field.</h2>
         <div class="math-block">

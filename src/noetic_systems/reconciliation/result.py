@@ -14,8 +14,19 @@ reasons. The same computed result can therefore serve a production prompt, a
 debugging interface, or an evaluation harness.
 
 The result also preserves per-document scores. Energy, specificity, query score,
-support, and query echo remain available after reconciliation so final chunks can
-be audited without rerunning the pipeline.
+and graph support remain available after reconciliation so final chunks can be
+audited without rerunning the pipeline.
+
+Key variables:
+    `winner`: The selected basin after scoring and representative ranking.
+    `basins`: All basins, ordered by score. Competitors remain available for
+        inspection.
+    `uncertainty`: Structural caution score. It is not a truth probability.
+    `document_energy`: Final diffused energy by document id.
+    `document_specificity`: Local information-density score by document id.
+    `document_query_score`: Original hybrid retrieval score by document id.
+    `document_support`: Weighted graph degree by document id.
+    `edges`: Edge inspection records from graph construction.
 """
 
 from __future__ import annotations
@@ -42,7 +53,6 @@ class ReconciliationResult:
         document_specificity: Specificity score by document id.
         document_query_score: Hybrid query score by document id.
         document_support: Graph support by document id.
-        document_echo: Query-echo score by document id.
         edges: Evidence edges used to build the candidate graph.
     """
 
@@ -56,7 +66,6 @@ class ReconciliationResult:
     document_specificity: dict[str, float]
     document_query_score: dict[str, float]
     document_support: dict[str, float]
-    document_echo: dict[str, float]
     edges: tuple[EvidenceEdge, ...]
 
     def document_ids(self, k: int = 5) -> list[str]:
@@ -69,17 +78,6 @@ class ReconciliationResult:
             Ranked document ids.
         """
         return list(self.winner.documents[:k])
-
-    def top_k_documents(self, k: int = 5) -> list[str]:
-        """Return top-k document ids from the winning basin.
-
-        Args:
-            k: Maximum number of document ids to return.
-
-        Returns:
-            Ranked document ids.
-        """
-        return self.document_ids(k)
 
     def chunks(self, database: Database, k: int = 5) -> list[dict[str, Any]]:
         """Return LLM-ready chunks from the winning basin.
@@ -154,7 +152,8 @@ class ReconciliationResult:
         if not doc:
             return None
 
-        # Preserve all major reconciliation signals on each materialized chunk.
+        # Keep the chunk payload plain. These fields are enough for an LLM prompt
+        # or a human inspection view to see why the chunk was returned.
         chunk = {
             "id": doc["id"],
             "text": doc["text"],
@@ -163,7 +162,6 @@ class ReconciliationResult:
             "specificity": self.document_specificity.get(doc_id, 0.0),
             "query_score": self.document_query_score.get(doc_id, 0.0),
             "support": self.document_support.get(doc_id, 0.0),
-            "query_echo": self.document_echo.get(doc_id, 0.0),
         }
         if include_basin:
             chunk["basin"] = self.winner.label
@@ -183,7 +181,8 @@ class ReconciliationResult:
         """
         uncertainty_explanation = []
         if self.uncertainty > 0.5:
-            # Expose structural reasons so callers can decide how much caveat to add.
+            # Keep uncertainty explainable: show competition, scatter, or weak
+            # structure instead of a naked score.
             if len(self.basins) > 1 and self.basins[0].score:
                 competition = self.basins[1].score / self.basins[0].score
                 if competition > 0.5:
@@ -222,17 +221,6 @@ class ReconciliationResult:
                 "dispersion": self.dispersion,
             },
         }
-
-    def evidence(self, max_basins: int = 3) -> dict[str, Any]:
-        """Return the reconciled evidence field.
-
-        Args:
-            max_basins: Maximum number of basins to expose.
-
-        Returns:
-            Structured inspection payload.
-        """
-        return self.evidence_field(max_basins=max_basins)
 
     def basin_dict(self, basin: Basin) -> dict[str, Any]:
         """Serialize a basin for public result payloads.

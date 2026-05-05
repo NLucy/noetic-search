@@ -11,11 +11,11 @@ into a graph, detects coherent regions in that graph, lets retrieval confidence
 move through the graph, and returns the best representatives of the strongest
 region.
 
-The modules are named to match the process:
+The modules are named to match the durable implementation boundaries:
 
 ```text
-candidates -> graph -> spectral -> seeding -> diffusion -> basins
-           -> uncertainty -> ranking -> result
+engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
+       -> metrics -> models
 ```
 
 ## Reading Order
@@ -23,28 +23,23 @@ candidates -> graph -> spectral -> seeding -> diffusion -> basins
 1. `engine.py`
    The orchestration layer. Start here to see the full sequence in one method:
    retrieve candidates, admit graph candidates, build the graph, detect basins,
-   seed and diffuse energy, score basins, estimate uncertainty, and return a
+   initialize and diffuse energy, score basins, estimate uncertainty, and return a
    result.
    The engine should stay thin. It answers "what happens next?" while each
    process module answers "how is this step computed?"
+   Candidate admission is intentionally simple and stays here: the graph field
+   is the first `result_limit` candidates from broad retrieval.
 
-2. `candidates.py`
-   Selects the local graph candidate field from broad hybrid retrieval by
-   preserving rank order up to the graph limit. This is intentionally neutral:
-   it does not reinterpret the hybrid ranking before graph construction.
-   Conceptually, this step sets the working field. It does not decide what is
-   correct; it only limits the number of candidates that later graph operations
-   must consider.
-
-3. `graph.py`
+2. `graph.py`
    Builds the evidence graph. Chunks become nodes. Each chunk pair can receive
    one weighted evidence connection. That connection may combine embedding
-   similarity, ordinary metadata, and near-duplicate signal contributions.
+   similarity and near-duplicate signal contributions. Metadata remains part of
+   the returned chunk payload, but it does not create graph edges.
    This is where the retrieved list becomes a structure. The graph does not
    answer the query by itself; it defines which candidates can support, repeat,
    or relate to one another before spectral analysis and diffusion run.
 
-4. `spectral.py`
+3. `spectral.py`
    Uses the normalized graph Laplacian and Fiedler vector to propose basin
    boundaries. If the graph does not support a useful split, the field remains
    one basin.
@@ -54,18 +49,14 @@ candidates -> graph -> spectral -> seeding -> diffusion -> basins
    This step defines the basin assignments. Diffusion later uses those fixed
    assignments; it does not create or redraw them.
 
-5. `seeding.py`
+4. `diffusion.py`
    Converts hybrid retrieval scores and ranks into the initial energy
-   distribution for diffusion.
-   Seeding preserves the first-stage retrieval opinion without making it final.
-   High-ranked chunks start with more influence, but lower-ranked chunks remain
-   eligible to gain support through the graph. Seeding happens after basin
-   detection because the spectral step only needs graph structure, not retrieval
-   energy.
-
-6. `diffusion.py`
-   Runs discrete time-step propagation over the fixed evidence graph. Energy
-   moves across weighted edges so support can travel through related chunks.
+   distribution, then runs discrete time-step propagation over the fixed evidence
+   graph. Energy moves across weighted edges so support can travel through
+   related chunks.
+   Initialization preserves the first-stage retrieval opinion without making it
+   final. High-ranked chunks start with more influence, but lower-ranked chunks
+   remain eligible to gain support through the graph.
    Each time step redistributes the current energy. A chunk can gain importance
    because it is connected to other supported chunks, and an isolated high-rank
    candidate can lose dominance because little support flows back to it.
@@ -73,38 +64,42 @@ candidates -> graph -> spectral -> seeding -> diffusion -> basins
    confidence settles on nodes inside the basins that spectral analysis already
    proposed.
 
-7. `basins.py`
+5. `basins.py`
    Scores each fixed spectral basin using settled energy, support, cohesion, and
    duplicate pressure.
    This step chooses between regions, not individual chunks. A good basin should
    have energy that settled into it, enough members to represent an evidence
    position, internal coherence, and limited duplicate pressure.
-
-8. `uncertainty.py`
-   Calculates structural uncertainty from basin competition, energy dispersion,
-   and graph modularity. Basin competition is only knowable after basin scoring:
+   This module also calculates structural uncertainty from basin competition,
+   energy dispersion, and graph modularity. Basin competition is only knowable
+   after basin scoring:
    if the runner-up basin is close to the winner, uncertainty rises. Dispersion
    checks whether diffused energy stayed scattered instead of settling, and
    modularity checks whether the graph split had a clear structure.
 
-9. `ranking.py`
+6. `ranking.py`
    Ranks representative chunks only inside the winning basin. Ranking happens
    after basin scoring because discarded basins do not need final return order.
    Once the winning region is known, the task becomes selecting the most useful
    representatives of that region for a compact LLM payload.
 
-10. `result.py`
-    Exposes caller-facing surfaces: document ids, LLM-ready chunks, strongest
-    basin payloads, and the full evidence field. The default product surface is
-    the winning basin's chunks. The inspection surface can also return competing
-    basins so an engineer, evaluator, or LLM prompt can see what the winning
-    basin beat and whether the field was structurally uncertain.
+7. `result.py`
+   Exposes caller-facing surfaces: document ids, LLM-ready chunks, strongest
+   basin payloads, and the full evidence field. The default product surface is
+   the winning basin's chunks. The inspection surface can also return competing
+   basins so an engineer, evaluator, or LLM prompt can see what the winning
+   basin beat and whether the field was structurally uncertain.
 
-11. `models.py`
-    Defines the small typed records passed between modules: `EvidenceEdge`,
-    `Basin`, and algorithm mode literals.
-    These records are intentionally plain. They make the pipeline easy to test
-    because each stage passes explicit data rather than hidden state.
+8. `metrics.py`
+   Provides shared graph and text measurements used by basin scoring, uncertainty,
+   ranking, and result payloads. Keeping these calculations together avoids
+   hiding small scoring rules across the pipeline.
+
+9. `models.py`
+   Defines the small typed records passed between modules: `EvidenceEdge` and
+   `Basin`.
+   These records are intentionally plain. They make the pipeline easy to test
+   because each stage passes explicit data rather than hidden state.
 
 ## Default Return
 
@@ -121,10 +116,10 @@ uncertainty reasons.
 
 ## What To Change Carefully
 
-- Change `candidates.py` carefully: it controls recall before graph reasoning.
 - Change `graph.py` carefully: edge weights define every downstream operation.
 - Change `spectral.py` carefully: split guards decide whether basins exist.
-- Change `seeding.py` and `diffusion.py` carefully: they determine how retrieval
-  confidence settles inside the fixed graph.
-- Change `basins.py` carefully: basin scoring determines the winning region.
+- Change `diffusion.py` carefully: it determines how retrieval confidence is
+  initialized and settles inside the fixed graph.
+- Change `basins.py` carefully: basin scoring determines the winning region and
+  uncertainty.
 - Change `ranking.py` carefully: chunk ranking determines what the LLM actually sees.
