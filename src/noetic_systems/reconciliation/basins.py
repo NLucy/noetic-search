@@ -14,10 +14,9 @@ settled, cohesion says whether the region hangs together, support says whether
 the basin contains enough material to represent a concept, and the duplicate
 penalty reduces regions that are mostly repeated text.
 
-Representative chunk selection is intentionally handled in
-`noetic_systems.reconciliation.ranking`. This module decides how strong each
-region is. Ranking decides which members of the winning region should be
-returned.
+Representative chunk selection is intentionally handled later in
+`noetic_systems.reconciliation.ranking`, after the winning basin is known. This
+module decides only how strong each region is.
 """
 
 from __future__ import annotations
@@ -28,37 +27,23 @@ from noetic_systems.reconciliation.metrics import (
     calculate_cohesion,
     duplicate_penalty as calculate_duplicate_penalty,
 )
-from noetic_systems.reconciliation.models import Basin, ReturnRanker
-from noetic_systems.reconciliation.ranking import rank_basin_documents
-from noetic_systems.search.semantic import SearchResult
+from noetic_systems.reconciliation.models import Basin
 
 
 def build_basins(
     communities: dict[str, int],
     energy: dict[str, float],
-    specificity: dict[str, float],
-    query_score: dict[str, float],
-    support: dict[str, float],
-    echo: dict[str, float],
-    return_ranker: ReturnRanker,
     graph: dict[str, dict[str, float]],
-    doc_index: dict[str, SearchResult],
 ) -> list[Basin]:
     """Build scored basins from community assignments.
 
     Args:
         communities: Community assignment by document id.
         energy: Diffused energy by document id.
-        specificity: Specificity score by document id.
-        query_score: Hybrid query score by document id.
-        support: Graph support by document id.
-        echo: Query-echo score by document id.
-        return_ranker: Strategy for ranking documents inside each basin.
         graph: Weighted adjacency mapping.
-        doc_index: Candidate lookup by document id.
 
     Returns:
-        Scored basins with internally ranked documents.
+        Scored basins with unranked member documents.
     """
     grouped: dict[int, list[tuple[str, float]]] = defaultdict(list)
     for doc_id, comm_id in communities.items():
@@ -67,17 +52,7 @@ def build_basins(
     basins = []
     for comm_id, docs in grouped.items():
         energy_by_doc = dict(docs)
-        # Rank representatives before storing the basin so result surfaces can
-        # return the strongest region directly without recomputing chunk order.
-        doc_ids = rank_basin_documents(
-            list(energy_by_doc),
-            energy_by_doc,
-            specificity,
-            query_score,
-            support,
-            echo,
-            return_ranker,
-        )
+        doc_ids = list(energy_by_doc)
         cohesion = calculate_cohesion(doc_ids, graph)
         duplicate_penalty = calculate_duplicate_penalty(doc_ids, graph)
         basin_energy = float(sum(energy_by_doc.values()))

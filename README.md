@@ -15,14 +15,20 @@ after candidate retrieval.
 query
   -> hybrid candidates
   -> candidate graph
-  -> diffusion
-  -> spectral basins
-  -> strongest basin
+  -> spectral basin boundaries
+  -> seed retrieval energy
+  -> diffuse energy over fixed graph
+  -> score fixed basins
+  -> rank winning-basin chunks
   -> chunks or inspection field
 ```
 
 The default product surface is simple: return the strongest basin's chunks, ordered
 for useful evidence rather than individual retrieval rank.
+
+Spectral detection proposes the basin boundaries. Diffusion does not create or
+redraw those boundaries; it only updates seeded energy on graph nodes. Basin
+scoring then selects the strongest already-detected basin.
 
 ## Why
 

@@ -19,7 +19,7 @@ semantic closeness, metadata agreement indicates shared source context such as
 document, URL, title, or domain, and near-duplicate similarity identifies very
 similar chunks so later scoring can avoid overvaluing repetition. These
 contributions are collapsed into one final adjacency weight per chunk pair; that
-adjacency map is the structure that diffusion and spectral partitioning operate
+adjacency map is the structure that spectral partitioning and diffusion operate
 on.
 """
 
@@ -76,7 +76,7 @@ def build_evidence_graph(
     edges: list[EvidenceEdge] = []
 
     # Build inspection-friendly edge records first, then collapse them into one
-    # weighted adjacency map for diffusion and spectral partitioning.
+    # weighted adjacency map for spectral partitioning and diffusion.
     for i, id1 in enumerate(ids):
         for id2 in ids[i + 1:]:
             similarity = float(

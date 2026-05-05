@@ -1,29 +1,86 @@
-# Noetic Systems
+<div class="noetic-page">
+  <section class="hero">
+    <p class="eyebrow">Core thesis</p>
+    <h1>Broad retrieval for recall. Graph reconciliation for precision.</h1>
+    <p>
+      Noetic Search is a post-retrieval reconciliation layer for hybrid search.
+      Hybrid retrieval finds plausible candidates; Noetic builds a local graph,
+      detects evidence basins, and returns representative chunks from the
+      strongest basin.
+    </p>
+  </section>
 
-Noetic Systems is post-retrieval graph reconciliation for hybrid search.
+  <section class="grid two">
+    <article>
+      <h2>Standard Hybrid</h2>
+      <pre>query -> hybrid search -> top 5 chunks -> LLM</pre>
+      <p>
+        The LLM receives raw rank. If the first five chunks are stale,
+        repetitive, or shallow, the model has to repair retrieval inside the
+        prompt.
+      </p>
+    </article>
+    <article>
+      <h2>Noetic Search</h2>
+      <pre>query -> candidates
+      -> graph
+      -> spectral
+      -> seeding
+      -> diffusion
+      -> basins
+      -> uncertainty
+      -> ranking
+      -> result -> LLM</pre>
+      <p>
+        The LLM receives a selected evidence surface, not a pile of nearest
+        neighbors.
+      </p>
+    </article>
+  </section>
 
-Hybrid search finds candidates. Noetic Search resolves those candidates into a
-coherent evidence basin before the LLM sees them.
+  <section class="grid three">
+    <article>
+      <h2>What It Does</h2>
+      <p>
+        It turns a broad candidate field into a smaller, coherent evidence
+        region before the LLM sees the prompt.
+      </p>
+    </article>
+    <article>
+      <h2>What It Does Not Do</h2>
+      <p>
+        It does not replace vector search, BM25, rerankers, or LLM reasoning. It
+        changes the step after candidate retrieval.
+      </p>
+    </article>
+    <article>
+      <h2>Current Signal</h2>
+      <p>
+        On the blind hard benchmark: standard hybrid top-5 is
+        <strong>0/10</strong>; Noetic top-5 from hybrid top-50 is
+        <strong>8/10</strong>.
+      </p>
+    </article>
+  </section>
 
-## Read This Way
+  <section class="panel">
+    <p class="eyebrow">Return surfaces</p>
+    <h2>One reconciliation result, multiple caller views.</h2>
+    <div class="surface-list">
+      <div><code>chunks()</code><span>Compact LLM-ready chunks from the winning basin.</span></div>
+      <div><code>strongest_basin()</code><span>The winning basin with chunks, uncertainty, and metrics.</span></div>
+      <div><code>evidence_field()</code><span>The inspection field: winner, competitors, support edges, uncertainty, and graph metrics.</span></div>
+    </div>
+  </section>
 
-1. [The Process](process.md): the full technical treatment.
-2. [Testing Results](testing-results.md): benchmark commands, numbers, and interpretation.
-
-## One-Line Thesis
-
-```text
-Use broad retrieval for recall, then graph reconciliation for precision.
-```
-
-## Current Signal
-
-On the blind hard benchmark:
-
-```text
-standard hybrid top-5: 0/10
-noetic top-5 from hybrid top-50: 8/10
-```
-
-The result is promising, not finished. The open work is graph admission, basin
-pollution, and final chunk ordering.
+  <section class="panel">
+    <p class="eyebrow">Implementation</p>
+    <h2>The core path is intentionally small.</h2>
+    <pre>Database
+  -> SemanticSearch + LexicalSearch
+  -> HybridSearch
+  -> Reconciler.reconcile()
+  -> ReconciliationResult
+  -> chunks(), strongest_basin(), or evidence_field()</pre>
+  </section>
+</div>

@@ -7,27 +7,24 @@ and returns representative chunks from that basin.
 The main idea is simple: first-stage retrieval should be broad, but final LLM
 context should be coherent. Reconciliation is the layer between those two
 requirements. It keeps the candidate field local to one query, turns candidates
-into a graph, lets retrieval confidence move through that graph, detects
-coherent regions, and returns the best representatives of the strongest region.
+into a graph, detects coherent regions in that graph, lets retrieval confidence
+move through the graph, and returns the best representatives of the strongest
+region.
 
 The modules are named to match the process:
 
 ```text
-candidates -> graph -> seeding -> diffusion -> spectral -> basins -> ranking
-           -> uncertainty -> result
+candidates -> graph -> spectral -> seeding -> diffusion -> basins
+           -> uncertainty -> ranking -> result
 ```
-
-`ranking.py` appears before `uncertainty.py` because representative ordering is
-part of basin construction. Each basin stores its member chunks in return order
-before the basins are sorted against each other. Uncertainty is then calculated
-after all scored basins are known.
 
 ## Reading Order
 
 1. `engine.py`
    The orchestration layer. Start here to see the full sequence in one method:
    retrieve candidates, admit graph candidates, build the graph, detect basins,
-   diffuse energy, score basins, estimate uncertainty, and return a result.
+   seed and diffuse energy, score basins, estimate uncertainty, and return a
+   result.
    The engine should stay thin. It answers "what happens next?" while each
    process module answers "how is this step computed?"
 
@@ -45,52 +42,56 @@ after all scored basins are known.
    similarity, ordinary metadata, and near-duplicate signal contributions.
    This is where the retrieved list becomes a structure. The graph does not
    answer the query by itself; it defines which candidates can support, repeat,
-   or relate to one another before diffusion and spectral analysis run.
+   or relate to one another before spectral analysis and diffusion run.
 
-4. `seeding.py`
-   Converts hybrid retrieval scores and ranks into the initial energy
-   distribution for diffusion.
-   Seeding preserves the first-stage retrieval opinion without making it final.
-   High-ranked chunks start with more influence, but lower-ranked chunks remain
-   eligible to gain support through the graph.
-
-5. `diffusion.py`
-   Runs discrete time-step propagation over the fixed evidence graph. Energy
-   moves across weighted edges so support can travel through related chunks.
-   Each time step redistributes the current energy. A chunk can gain importance
-   because it is connected to other supported chunks, and an isolated high-rank
-   candidate can lose dominance because little support flows back to it.
-
-6. `spectral.py`
+4. `spectral.py`
    Uses the normalized graph Laplacian and Fiedler vector to propose basin
    boundaries. If the graph does not support a useful split, the field remains
    one basin.
    This is the graph-geometry step. The Laplacian asks where values can stay
    smooth inside a region and where they naturally separate. Accepted splits
    become candidate basins; rejected splits leave the field intact.
+   This step defines the basin assignments. Diffusion later uses those fixed
+   assignments; it does not create or redraw them.
+
+5. `seeding.py`
+   Converts hybrid retrieval scores and ranks into the initial energy
+   distribution for diffusion.
+   Seeding preserves the first-stage retrieval opinion without making it final.
+   High-ranked chunks start with more influence, but lower-ranked chunks remain
+   eligible to gain support through the graph. Seeding happens after basin
+   detection because the spectral step only needs graph structure, not retrieval
+   energy.
+
+6. `diffusion.py`
+   Runs discrete time-step propagation over the fixed evidence graph. Energy
+   moves across weighted edges so support can travel through related chunks.
+   Each time step redistributes the current energy. A chunk can gain importance
+   because it is connected to other supported chunks, and an isolated high-rank
+   candidate can lose dominance because little support flows back to it.
+   Diffusion does not find, move, or redraw basins; it measures how retrieval
+   confidence settles on nodes inside the basins that spectral analysis already
+   proposed.
 
 7. `basins.py`
-   Scores each detected basin using settled energy, support, cohesion, and
+   Scores each fixed spectral basin using settled energy, support, cohesion, and
    duplicate pressure.
    This step chooses between regions, not individual chunks. A good basin should
    have energy that settled into it, enough members to represent an evidence
    position, internal coherence, and limited duplicate pressure.
 
-8. `ranking.py`
-   Ranks representative chunks inside each detected basin. This happens before
-   uncertainty because `basins.py` stores each basin with its member chunks
-   already ordered for return. The winning basin is selected later by basin
-   score.
-   Ranking is deliberately narrower than basin scoring. Once a region is known,
-   the task becomes selecting the most useful representatives of that region for
-   a compact LLM payload.
-
-9. `uncertainty.py`
+8. `uncertainty.py`
    Calculates structural uncertainty from basin competition, energy dispersion,
    and graph modularity. Basin competition is only knowable after basin scoring:
    if the runner-up basin is close to the winner, uncertainty rises. Dispersion
    checks whether diffused energy stayed scattered instead of settling, and
    modularity checks whether the graph split had a clear structure.
+
+9. `ranking.py`
+   Ranks representative chunks only inside the winning basin. Ranking happens
+   after basin scoring because discarded basins do not need final return order.
+   Once the winning region is known, the task becomes selecting the most useful
+   representatives of that region for a compact LLM payload.
 
 10. `result.py`
     Exposes caller-facing surfaces: document ids, LLM-ready chunks, strongest
@@ -123,5 +124,7 @@ uncertainty reasons.
 - Change `candidates.py` carefully: it controls recall before graph reasoning.
 - Change `graph.py` carefully: edge weights define every downstream operation.
 - Change `spectral.py` carefully: split guards decide whether basins exist.
+- Change `seeding.py` and `diffusion.py` carefully: they determine how retrieval
+  confidence settles inside the fixed graph.
 - Change `basins.py` carefully: basin scoring determines the winning region.
 - Change `ranking.py` carefully: chunk ranking determines what the LLM actually sees.

@@ -1,17 +1,17 @@
 """Orchestration engine for Noetic reconciliation.
 
 The engine owns stateful dependencies, retrieves a broad hybrid candidate set,
-and then calls the functional graph, diffusion, spectral, basin, and result
+and then calls the functional graph, spectral, seeding, diffusion, basin, and result
 modules in order. We keep orchestration separate from the math so the algorithm
 can be inspected step by step and each methodology can be tested without a large
 stateful class.
 
 The central method is `Reconciler.reconcile()`. It retrieves more candidates
 than it plans to return, selects a graph-sized working set, builds the local
-evidence graph, detects communities, diffuses energy, scores basins, and returns
-a `ReconciliationResult`. Each intermediate structure is ordinary Python data:
-lists of search results, adjacency dictionaries, energy dictionaries, community
-assignments, basin records, and result payloads.
+evidence graph, detects communities, seeds and diffuses energy, scores basins,
+and returns a `ReconciliationResult`. Each intermediate structure is ordinary
+Python data: lists of search results, adjacency dictionaries, community
+assignments, energy dictionaries, basin records, and result payloads.
 
 Keeping this file thin is important. If the engine starts accumulating scoring
 rules or matrix logic, the method becomes hard to audit. The engine should answer
@@ -20,6 +20,8 @@ computed?"
 """
 
 from __future__ import annotations
+
+from dataclasses import replace
 
 from noetic_systems.database import Database
 from noetic_systems.reconciliation.basins import build_basins
@@ -37,6 +39,7 @@ from noetic_systems.reconciliation.metrics import (
     query_echo,
 )
 from noetic_systems.reconciliation.models import Basin, ReturnRanker
+from noetic_systems.reconciliation.ranking import rank_basin_documents
 from noetic_systems.reconciliation.result import ReconciliationResult
 from noetic_systems.reconciliation.seeding import seed_energy
 from noetic_systems.reconciliation.spectral import detect_communities
@@ -128,22 +131,7 @@ class Reconciler:
         for _ in range(diffusion_steps):
             energy = diffuse(energy, graph, damping)
 
-        # These per-document signals feed both basin scoring and final chunk ranking.
-        specificity = document_specificity(graph_candidates)
-        query_score = {result.id: result.score for result in graph_candidates}
-        support = document_support(graph)
-        echo = query_echo(query, graph_candidates)
-        basins = build_basins(
-            communities,
-            energy,
-            specificity,
-            query_score,
-            support,
-            echo,
-            return_ranker,
-            graph,
-            doc_index,
-        )
+        basins = build_basins(communities, energy, graph)
         if not basins:
             return empty_result(query)
 
@@ -153,9 +141,26 @@ class Reconciler:
         dispersion = calculate_dispersion(energy)
         uncertainty = calculate_uncertainty(basins, modularity, dispersion)
 
+        # Only the winning basin needs final representative chunk ordering.
+        specificity = document_specificity(graph_candidates)
+        query_score = {result.id: result.score for result in graph_candidates}
+        support = document_support(graph)
+        echo = query_echo(query, graph_candidates)
+        ranked_winner_documents = rank_basin_documents(
+            list(basins[0].documents),
+            energy,
+            specificity,
+            query_score,
+            support,
+            echo,
+            return_ranker,
+        )
+        winner = replace(basins[0], documents=tuple(ranked_winner_documents))
+        basins = [winner, *basins[1:]]
+
         return ReconciliationResult(
             query=query,
-            winner=basins[0],
+            winner=winner,
             basins=tuple(basins),
             uncertainty=uncertainty,
             dispersion=dispersion,
