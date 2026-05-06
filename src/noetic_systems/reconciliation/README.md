@@ -51,10 +51,12 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
 
 4. `diffusion.py`
    Converts hybrid retrieval scores and ranks into the initial energy
-   distribution, removes cross-basin edges from the graph, then runs discrete
-   time-step propagation inside the fixed spectral basins. Energy moves across
-   same-basin weighted edges so support can travel through related chunks
-   without leaking into a competing region.
+   distribution, then runs discrete time-step propagation over a graph. The
+   trace viewer uses the same diffusion update in two ways: first on the whole
+   graph as a diagnostic for attraction, leakage, and absorption; then on a graph
+   with cross-basin edges removed for basin scoring.
+   In the scoring path, energy moves across same-basin weighted edges so support
+   can travel through related chunks without leaking into a competing region.
    Initialization preserves the first-stage retrieval opinion without making it
    final. High-ranked chunks start with more influence, but lower-ranked chunks
    remain eligible to gain support through the graph.
@@ -72,6 +74,9 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
    This step chooses between regions, not individual chunks. A good basin should
    have energy that settled into it, enough members to represent an evidence
    position, internal coherence, and limited duplicate pressure.
+   Support is bounded, but it now grows across a wider range before saturating,
+   so a broad coherent basin can beat a narrower basin that started with more
+   hybrid retrieval energy.
    This module also calculates structural uncertainty from basin competition,
    energy dispersion, and graph modularity. Basin competition is only knowable
    after basin scoring:

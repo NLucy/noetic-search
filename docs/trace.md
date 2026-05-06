@@ -18,7 +18,7 @@
       class="trace-slider"
       type="range"
       min="0"
-      max="6"
+      max="7"
       value="0"
       step="1"
       aria-label="Trace step"
@@ -30,7 +30,7 @@
     <div class="trace-stage">
       <div class="trace-stage-head">
         <div>
-          <p id="traceKicker" class="trace-kicker">1 / 7</p>
+          <p id="traceKicker" class="trace-kicker">1 / 8</p>
           <h2 id="traceStageTitle">Corpus field</h2>
           <p id="traceQuery" class="trace-query">Query loading</p>
         </div>
@@ -117,23 +117,47 @@
           explanations at once.
         </p>
       </article>
+      <article class="trace-step" data-step="whole-diffusion">
+        <p class="eyebrow">5. Whole-Graph Diffusion</p>
+        <h2>Let retrieval energy move across the full graph.</h2>
+        <p>
+          This diagnostic runs after basin boundaries are known, but before
+          cross-basin edges are removed. It asks where the hybrid signal wants
+          to move if every graph edge is available.
+        </p>
+        <p>
+          Whole-graph diffusion can reveal attraction, leakage, or absorption
+          across the candidate field. If a lower-seed basin gains energy here,
+          that is evidence that the graph is pulling query signal toward it. If
+          the high-seed basin simply smears outward, the diagnostic says hybrid
+          gravity is still dominating.
+        </p>
+      </article>
       <article class="trace-step" data-step="diffusion">
-        <p class="eyebrow">5. Diffusion</p>
-        <h2>Animate retrieval energy moving over fixed edges.</h2>
+        <p class="eyebrow">6. Basin-Constrained Diffusion</p>
+        <h2>Redistribute energy inside fixed basins.</h2>
         <p>
           Point size follows absolute seeded energy at the captured diffusion
           time step. Energy starts from hybrid rank and score, then moves
           through same-basin graph relationships.
         </p>
         <p>
-          Diffusion is not the winner decision by itself. It shows where seeded
-          retrieval energy settles over time inside each fixed spectral region;
-          basin scoring then compares the total region strength using energy,
-          support, cohesion, and duplicate pressure.
+          Because cross-basin edges are removed before diffusion, total basin
+          energy is conserved. Diffusion does not move basin 1's energy into
+          basin 0. It redistributes energy inside each fixed basin, which matters
+          for representative chunks and for seeing whether support concentrates
+          or stays scattered.
+        </p>
+        <p>
+          This step tests how the hybrid signal behaves after it meets the graph.
+          A high-rank chunk that is isolated stays thin. A lower-rank chunk can
+          become more important when neighboring chunks also support it. That is
+          the practical value of diffusion: it separates isolated matches from
+          graph-supported evidence.
         </p>
       </article>
       <article class="trace-step" data-step="basins">
-        <p class="eyebrow">6. Basin Scoring</p>
+        <p class="eyebrow">7. Basin Scoring</p>
         <h2>Select the strongest evidence region.</h2>
         <p>
           The winning basin balances settled energy, support, cohesion, duplicate
@@ -142,11 +166,18 @@
         <p>
           The score is computed from the basin totals: settled energy, support,
           internal cohesion, and duplicate pressure. The panel under the graphic
-          shows the actual values for this trace.
+          shows whether the winner was already the hybrid seed-energy winner or
+          whether graph structure changed the decision.
+        </p>
+        <p>
+          A lower-seed basin should only win when it clears a stricter standard:
+          enough query energy to remain relevant, strong internal cohesion,
+          non-duplicate support, and returned chunks that preserve the broader
+          explanation. Size alone is not a sufficient reason.
         </p>
       </article>
       <article class="trace-step" data-step="final">
-        <p class="eyebrow">7. Final Return</p>
+        <p class="eyebrow">8. Final Return</p>
         <h2>Return compact representatives from the winning basin.</h2>
         <p>
           These are the chunks that would be passed to the LLM through
@@ -155,6 +186,11 @@
         <p>
           Final return does not take one chunk from every basin. It takes the
           most useful representatives from the winning basin after basin scoring.
+        </p>
+        <p>
+          The return set has to defend the basin decision. If the basin won
+          because it represents a broader answer, the returned chunks must cover
+          that answer rather than repeat one local pocket.
         </p>
       </article>
     </div>
@@ -185,7 +221,7 @@
 
   .trace-step-buttons {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -631,13 +667,14 @@
     drawnPoints: [],
   };
   const colors = ["#2563eb", "#059669", "#b45309", "#7c3aed", "#dc2626", "#0891b2"];
-  const stepOrder = ["corpus", "hybrid", "graph", "spectral", "diffusion", "basins", "final"];
+  const stepOrder = ["corpus", "hybrid", "graph", "spectral", "whole-diffusion", "diffusion", "basins", "final"];
   const stepTitles = {
     corpus: "Corpus field",
     hybrid: "Hybrid retrieval",
     graph: "Evidence graph",
+    "whole-diffusion": "Whole-graph diffusion",
     spectral: "Spectral basins",
-    diffusion: "Diffusion energy",
+    diffusion: "Basin diffusion",
     basins: "Basin scoring",
     final: "Final return",
   };
@@ -645,8 +682,9 @@
     corpus: "Corpus",
     hybrid: "Hybrid",
     graph: "Graph",
+    "whole-diffusion": "Whole Diff.",
     spectral: "Spectral",
-    diffusion: "Diffusion",
+    diffusion: "Basin Diff.",
     basins: "Basins",
     final: "Final",
   };
@@ -705,7 +743,7 @@
 
   function viewPoints(trace) {
     const points = trace.points.filter((point) => {
-      if (["graph", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
+      if (["graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
         return point.is_graph_candidate;
       }
       if (state.step === "hybrid") return point.is_candidate;
@@ -750,6 +788,10 @@
   }
 
   function pointRadius(point) {
+    if (state.step === "whole-diffusion") {
+      const step = Math.min(state.frame, point.whole_energy.length - 1);
+      return 3.5 + Math.sqrt((point.whole_energy[step] || 0) * 960);
+    }
     if (state.step === "diffusion") {
       const step = Math.min(state.frame, point.energy.length - 1);
       return 3.5 + Math.sqrt((point.energy[step] || 0) * 960);
@@ -764,10 +806,10 @@
   function pointColor(point) {
     if (state.step === "final" && point.is_final) return "#047857";
     if (state.step === "basins" && point.is_winner) return "#047857";
-    if (["spectral", "diffusion", "basins"].includes(state.step) && point.community !== null) {
+    if (["spectral", "whole-diffusion", "diffusion", "basins"].includes(state.step) && point.community !== null) {
       return colors[Math.abs(point.community) % colors.length];
     }
-    if (["hybrid", "graph"].includes(state.step) && point.is_graph_candidate) return "#2563eb";
+    if (["hybrid", "graph", "whole-diffusion"].includes(state.step) && point.is_graph_candidate) return "#2563eb";
     if (state.step === "hybrid" && point.is_candidate) return "#60a5fa";
     return "#a8a29e";
   }
@@ -776,7 +818,7 @@
     if (state.step === "corpus") return 0.58;
     if (state.step === "hybrid") return point.is_candidate ? 0.95 : 0.14;
     if (state.step === "graph") return point.is_graph_candidate ? 0.95 : 0.10;
-    if (["spectral", "diffusion", "basins"].includes(state.step)) {
+    if (["whole-diffusion", "spectral", "diffusion", "basins"].includes(state.step)) {
       return point.is_graph_candidate ? 0.95 : 0.08;
     }
     if (state.step === "final") return point.is_final ? 1 : point.is_winner ? 0.32 : 0.07;
@@ -784,7 +826,7 @@
   }
 
   function drawEdges(trace, locations) {
-    if (!["graph", "spectral", "diffusion", "basins", "final"].includes(state.step)) return;
+    if (!["graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) return;
     const byId = new Map(trace.points.map((point) => [point.id, point]));
     ctx.save();
     for (const edge of trace.edges) {
@@ -841,7 +883,7 @@
   }
 
   function drawCommunityLabels(trace, locations) {
-    if (!["spectral", "diffusion", "basins", "final"].includes(state.step)) return;
+    if (!["spectral", "whole-diffusion", "diffusion", "basins", "final"].includes(state.step)) return;
     const groups = new Map();
     for (const point of trace.points) {
       if (!point.is_graph_candidate || point.community === null) continue;
@@ -906,7 +948,7 @@
       return;
     }
     traceQuery.innerHTML = `Query: <code>${escapeHtml(trace.case.query)}</code>`;
-    if (state.step === "diffusion") {
+    if (["whole-diffusion", "diffusion"].includes(state.step)) {
       stageMetric.textContent = `time step ${state.frame} of ${trace.settings.diffusion_steps}`;
     } else if (["spectral", "basins"].includes(state.step)) {
       stageMetric.textContent = `${trace.basins.length} basin${trace.basins.length === 1 ? "" : "s"} detected`;
@@ -924,17 +966,23 @@
       return;
     }
     const chips = [["#a8a29e", "corpus field"]];
-    if (["hybrid", "graph", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
+    if (["hybrid", "graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
       chips.push(["#60a5fa", "hybrid top-k"]);
     }
-    if (["graph", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
+    if (["graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
       chips.push(["#2563eb", "graph candidates"]);
     }
-    if (["spectral", "diffusion", "basins", "final"].includes(state.step)) {
+    if (["spectral", "whole-diffusion", "diffusion", "basins", "final"].includes(state.step)) {
       chips.push(["#7c3aed", `${trace.basins.length} basin${trace.basins.length === 1 ? "" : "s"}`]);
     }
     if (["basins", "final"].includes(state.step)) {
       chips.push(["#047857", `winner ${trace.winner.label}`]);
+    }
+    if (state.step === "whole-diffusion") {
+      chips.push(["#0f766e", "full graph energy"]);
+    }
+    if (state.step === "diffusion") {
+      chips.push(["#0f766e", "same-basin energy"]);
     }
     if (trace.case.target_ids.length > 0) {
       chips.push(["#f59e0b", "target chunk"]);
@@ -948,26 +996,66 @@
     return Number(value).toFixed(3);
   }
 
+  function formatSignedNumber(value) {
+    const number = Number(value);
+    return `${number >= 0 ? "+" : ""}${number.toFixed(3)}`;
+  }
+
   function renderScorePanel(trace) {
-    if (!trace || !trace.basins.length || !["basins", "final"].includes(state.step)) {
+    if (!trace || !trace.basins.length || !["whole-diffusion", "basins", "final"].includes(state.step)) {
       scorePanel.classList.remove("active");
       scorePanel.innerHTML = "";
       return;
     }
 
     const winner = trace.basins[0];
+    if (state.step === "whole-diffusion") {
+      const flowCards = trace.basins.map((basin) => {
+        const delta = basin.whole_energy_delta || 0;
+        return `
+          <div class="trace-score-card ${delta > 0 ? "winner" : ""}">
+            <strong>${escapeHtml(basin.label)}</strong>
+            <span>seed energy ${formatNumber(basin.seed_energy || 0)}</span>
+            <span>whole-graph energy ${formatNumber(basin.whole_energy || 0)}</span>
+            <span>flow delta ${formatSignedNumber(delta)}</span>
+            <span>target fraction ${formatNumber(basin.target_fraction || 0)}</span>
+          </div>
+        `;
+      }).join("");
+
+      scorePanel.classList.add("active");
+      scorePanel.innerHTML = `
+        <h3>Whole-graph diffusion diagnostic</h3>
+        <p>This view lets energy cross every graph edge. Positive flow delta means a basin absorbed energy from the surrounding field; negative delta means it leaked energy into neighbors. This does not choose the winner by itself.</p>
+        <div class="trace-score-grid">${flowCards}</div>
+      `;
+      return;
+    }
+
     const formula = "score = 0.45*energy + 0.25*support + 0.20*cohesion - duplicate penalty";
+    const seedWinner = trace.metrics.hybrid_seed_winner || "unknown";
+    const seedCopy = seedWinner === winner.label
+      ? `${escapeHtml(winner.label)} was also the hybrid seed-energy winner. This trace is showing graph-based compression and representative selection, not a basin winner reversal.`
+      : `${escapeHtml(winner.label)} beat ${escapeHtml(seedWinner)}, the basin with the largest initial hybrid seed energy. That is only defensible if the winner is not merely larger, but structurally healthier.`;
+    const reversalCopy = seedWinner === winner.label
+      ? "No reversal is claimed here. Hybrid found the strongest region, and Noetic compresses it into representative chunks."
+      : "A reversal means hybrid gave another basin the head start. The winner must justify that reversal with enough seed energy to stay relevant, strong cohesion, non-duplicate support, and a final return that covers the fuller explanation.";
     const basinCards = trace.basins.map((basin) => {
-      const supportScore = Math.min(1, basin.support / 6);
+      const supportScore = basin.support_component / 0.25;
       const isWinner = basin.label === winner.label;
       return `
         <div class="trace-score-card ${isWinner ? "winner" : ""}">
           <strong>${escapeHtml(basin.label)}${isWinner ? " selected" : ""}</strong>
           <span>score ${formatNumber(basin.score)}</span>
+          <span>seed energy ${formatNumber(basin.seed_energy || 0)}</span>
+          <span>whole delta ${formatSignedNumber(basin.whole_energy_delta || 0)}</span>
           <span>energy ${formatNumber(basin.energy)}</span>
+          <span>energy delta ${formatSignedNumber(basin.energy_delta || 0)}</span>
+          <span>score parts ${formatNumber(basin.energy_component || 0)} energy, ${formatNumber(basin.support_component || 0)} support, ${formatNumber(basin.cohesion_component || 0)} cohesion</span>
           <span>support ${basin.support} chunks (${formatNumber(supportScore)})</span>
           <span>cohesion ${formatNumber(basin.cohesion)}</span>
           <span>duplicate penalty ${formatNumber(basin.duplicate_penalty)}</span>
+          <span>target fraction ${formatNumber(basin.target_fraction || 0)}</span>
         </div>
       `;
     }).join("");
@@ -980,20 +1068,22 @@
       })
       .join("<br>");
     const finalCopy = state.step === "final"
-      ? `<p>Final chunks come from ${escapeHtml(winner.label)} because it has the highest basin score. Returned representatives:<br>${finalDocs}</p>`
+      ? `<p>Final chunks come from ${escapeHtml(winner.label)} because it has the highest basin score. They should preserve why the basin won, not just be the five individually strongest chunks. Returned representatives:<br>${finalDocs}</p>`
       : "";
 
     scorePanel.classList.add("active");
     scorePanel.innerHTML = `
       <h3>Why ${escapeHtml(winner.label)} wins</h3>
       <p>${formula}</p>
+      <p><strong>Hybrid check:</strong> ${seedCopy}</p>
+      <p><strong>Reversal standard:</strong> ${reversalCopy}</p>
       <div class="trace-score-grid">${basinCards}</div>
       ${finalCopy}
     `;
   }
 
   function renderDiffusionControls() {
-    if (!state.trace || state.step !== "diffusion") {
+    if (!state.trace || !["whole-diffusion", "diffusion"].includes(state.step)) {
       diffusionControls.classList.remove("active");
       return;
     }
@@ -1124,7 +1214,7 @@
     slider.value = String(index);
     prevButton.disabled = index === 0;
     nextButton.disabled = index === stepOrder.length - 1;
-    if (step !== "diffusion") {
+    if (!["whole-diffusion", "diffusion"].includes(step)) {
       state.diffusionPaused = false;
     }
     steps.forEach((item) => item.classList.toggle("active", item.dataset.step === step));
@@ -1139,7 +1229,7 @@
   }
 
   setInterval(() => {
-    if (state.step === "diffusion" && state.trace && !state.diffusionPaused) {
+    if (["whole-diffusion", "diffusion"].includes(state.step) && state.trace && !state.diffusionPaused) {
       setDiffusionFrame((state.frame + 1) % (state.trace.settings.diffusion_steps + 1));
     }
   }, 1300);

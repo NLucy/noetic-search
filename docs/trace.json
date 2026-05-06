@@ -2,8 +2,39 @@
   "case": {
     "id": "multi_basin_release",
     "query": "Formula 1 race debrief why did the car lose race pace after the safety car and miss the podium",
-    "expected_stance": "The trace should show several coherent race-debrief regions in one Formula 1 corpus, then choose the strongest region after diffusion and basin scoring.",
-    "target_ids": []
+    "expected_stance": "The obvious strategy explanation should receive high initial hybrid seed energy, but the selected answer should come from the broader race-pace failure region: tyre warmup and degradation, dirty air and aero balance, and power-unit deployment limits after the safety car.",
+    "target_ids": [
+      "aero-1",
+      "aero-10",
+      "aero-2",
+      "aero-3",
+      "aero-4",
+      "aero-5",
+      "aero-6",
+      "aero-7",
+      "aero-8",
+      "aero-9",
+      "power_unit-1",
+      "power_unit-10",
+      "power_unit-2",
+      "power_unit-3",
+      "power_unit-4",
+      "power_unit-5",
+      "power_unit-6",
+      "power_unit-7",
+      "power_unit-8",
+      "power_unit-9",
+      "tyres-1",
+      "tyres-10",
+      "tyres-2",
+      "tyres-3",
+      "tyres-4",
+      "tyres-5",
+      "tyres-6",
+      "tyres-7",
+      "tyres-8",
+      "tyres-9"
+    ]
   },
   "settings": {
     "blind": true,
@@ -28,8 +59,15 @@
       "graph_rank": 1,
       "community": 0,
       "is_target": false,
-      "is_winner": true,
-      "is_final": true,
+      "is_winner": false,
+      "is_final": false,
+      "whole_energy": [
+        0.2620257400962107,
+        0.08691728867799535,
+        0.08236546942678574,
+        0.06835250609940051,
+        0.06379726583963938
+      ],
       "energy": [
         0.2620257400962107,
         0.07481814462457546,
@@ -50,9 +88,16 @@
       "is_graph_candidate": true,
       "graph_rank": 2,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.12584832747322303,
+        0.0836383585164067,
+        0.08644505787078895,
+        0.08255535348142393,
+        0.08159032787938855
+      ],
       "energy": [
         0.12584832747322303,
         0.04516464127211096,
@@ -76,6 +121,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.08180040061269986,
+        0.07910498027212766,
+        0.08561967828467429,
+        0.08219814595057283,
+        0.08141153296396333
+      ],
       "energy": [
         0.08180040061269986,
         0.0673778388292797,
@@ -97,8 +149,15 @@
       "graph_rank": 4,
       "community": 0,
       "is_target": false,
-      "is_winner": true,
+      "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.060915994991593274,
+        0.06966407204586408,
+        0.07545339693447177,
+        0.07273623236596936,
+        0.07148114479328287
+      ],
       "energy": [
         0.060915994991593274,
         0.09111548891816489,
@@ -119,9 +178,16 @@
       "is_graph_candidate": true,
       "graph_rank": 5,
       "community": 0,
-      "is_target": false,
-      "is_winner": true,
-      "is_final": true,
+      "is_target": true,
+      "is_winner": false,
+      "is_final": false,
+      "whole_energy": [
+        0.0484432166173449,
+        0.0595551171227707,
+        0.060074455890017225,
+        0.057428189761738926,
+        0.055774515820129114
+      ],
       "energy": [
         0.0484432166173449,
         0.08102916153432164,
@@ -143,8 +209,15 @@
       "graph_rank": 6,
       "community": 0,
       "is_target": false,
-      "is_winner": true,
-      "is_final": true,
+      "is_winner": false,
+      "is_final": false,
+      "whole_energy": [
+        0.04019861622079681,
+        0.051980732405021816,
+        0.04447492288110813,
+        0.04353884799470841,
+        0.04145759185554271
+      ],
       "energy": [
         0.04019861622079681,
         0.07207794361973578,
@@ -165,9 +238,16 @@
       "is_graph_candidate": true,
       "graph_rank": 7,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.034158908156988445,
+        0.05711491648240702,
+        0.05617183378432222,
+        0.05789908746569837,
+        0.05869490827190569
+      ],
       "energy": [
         0.034158908156988445,
         0.021022097254601465,
@@ -189,8 +269,15 @@
       "graph_rank": 8,
       "community": 0,
       "is_target": false,
-      "is_winner": true,
-      "is_final": true,
+      "is_winner": false,
+      "is_final": false,
+      "whole_energy": [
+        0.029541520889320865,
+        0.06099513975839058,
+        0.04717920470747985,
+        0.0469357408225457,
+        0.04435375004455443
+      ],
       "energy": [
         0.029541520889320865,
         0.06291262079891195,
@@ -211,9 +298,16 @@
       "is_graph_candidate": true,
       "graph_rank": 9,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
-      "is_final": false,
+      "is_target": true,
+      "is_winner": true,
+      "is_final": true,
+      "whole_energy": [
+        0.02625090499229769,
+        0.054297878358726584,
+        0.051476758459921605,
+        0.0536322938045043,
+        0.05405779893706453
+      ],
       "energy": [
         0.02625090499229769,
         0.014168904936335524,
@@ -234,9 +328,16 @@
       "is_graph_candidate": true,
       "graph_rank": 10,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.023493075038959126,
+        0.036857298314713044,
+        0.04075003442305002,
+        0.04202287268239984,
+        0.04183881882306249
+      ],
       "energy": [
         0.023493075038959126,
         0.05927814386810044,
@@ -257,9 +358,16 @@
       "is_graph_candidate": true,
       "graph_rank": 11,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.021159907486584535,
+        0.014172263728650065,
+        0.019611726870129725,
+        0.021983088894003952,
+        0.02422668172636192
+      ],
       "energy": [
         0.021159907486584535,
         0.017283003115585407,
@@ -280,9 +388,16 @@
       "is_graph_candidate": true,
       "graph_rank": 12,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.01902721859751434,
+        0.04561005904113726,
+        0.03909553101162097,
+        0.04037203297896769,
+        0.039698261258217106
+      ],
       "energy": [
         0.01902721859751434,
         0.009413367646520697,
@@ -303,9 +418,16 @@
       "is_graph_candidate": true,
       "graph_rank": 13,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.017521940290486173,
+        0.01932811798772045,
+        0.016926754623317906,
+        0.017488233032367368,
+        0.016651889390308965
+      ],
       "energy": [
         0.017521940290486173,
         0.055897798598147315,
@@ -327,8 +449,15 @@
       "graph_rank": 14,
       "community": 0,
       "is_target": false,
-      "is_winner": true,
+      "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.01626352601474426,
+        0.049555918597819874,
+        0.04271022801169061,
+        0.041825200777913976,
+        0.03982533842756029
+      ],
       "energy": [
         0.01626352601474426,
         0.07040146494440301,
@@ -349,9 +478,16 @@
       "is_graph_candidate": true,
       "graph_rank": 15,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.015065640715492294,
+        0.0052978254733341236,
+        0.007067268136883484,
+        0.005911886813642655,
+        0.005713542371421866
+      ],
       "energy": [
         0.015065640715492294,
         0.015065640715492296,
@@ -372,9 +508,16 @@
       "is_graph_candidate": true,
       "graph_rank": 16,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.014102769422666188,
+        0.007795429241617298,
+        0.010060594578245069,
+        0.009909037575349965,
+        0.01044065491153098
+      ],
       "energy": [
         0.014102769422666188,
         0.011964511621739251,
@@ -395,9 +538,16 @@
       "is_graph_candidate": true,
       "graph_rank": 17,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.01316154468876395,
+        0.021754678202032043,
+        0.009824628778950437,
+        0.007691502386920197,
+        0.006313688228311789
+      ],
       "energy": [
         0.01316154468876395,
         0.01316154468876395,
@@ -418,9 +568,16 @@
       "is_graph_candidate": true,
       "graph_rank": 18,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.01210141949033953,
+        0.01346649753210625,
+        0.010734595400611308,
+        0.011644496535904133,
+        0.012346747108001857
+      ],
       "energy": [
         0.01210141949033953,
         0.006843707907141247,
@@ -441,9 +598,16 @@
       "is_graph_candidate": true,
       "graph_rank": 19,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.011411094113634687,
+        0.011411094113634689,
+        0.011411094113634689,
+        0.011411094113634689,
+        0.011411094113634689
+      ],
       "energy": [
         0.011411094113634687,
         0.011411094113634687,
@@ -464,9 +628,16 @@
       "is_graph_candidate": true,
       "graph_rank": 20,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.010727857781249992,
+        0.010727857781249994,
+        0.010727857781249994,
+        0.010727857781249994,
+        0.010727857781249994
+      ],
       "energy": [
         0.010727857781249992,
         0.010727857781249992,
@@ -488,8 +659,15 @@
       "graph_rank": 21,
       "community": 2,
       "is_target": false,
-      "is_winner": false,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.010205396865243964,
+        0.010205396865243965,
+        0.010205396865243965,
+        0.010205396865243965,
+        0.010205396865243965
+      ],
       "energy": [
         0.010205396865243964,
         0.010205396865243964,
@@ -510,9 +688,16 @@
       "is_graph_candidate": true,
       "graph_rank": 22,
       "community": 0,
-      "is_target": false,
-      "is_winner": true,
-      "is_final": true,
+      "is_target": true,
+      "is_winner": false,
+      "is_final": false,
+      "whole_energy": [
+        0.009692375776995497,
+        0.014247903874902065,
+        0.013410452437692793,
+        0.01437048740243944,
+        0.014498482998128333
+      ],
       "energy": [
         0.009692375776995497,
         0.01579069917806202,
@@ -533,9 +718,16 @@
       "is_graph_candidate": true,
       "graph_rank": 23,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.009231988385829743,
+        0.02033741319198485,
+        0.029717138735735265,
+        0.03437645418037813,
+        0.03789254257059711
+      ],
       "energy": [
         0.009231988385829743,
         0.026290217773900476,
@@ -556,9 +748,16 @@
       "is_graph_candidate": true,
       "graph_rank": 24,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.008801112397890493,
+        0.016209479475020133,
+        0.01704578902015758,
+        0.018355570178381745,
+        0.018851705224561064
+      ],
       "energy": [
         0.008801112397890493,
         0.0020438529360912254,
@@ -579,9 +778,16 @@
       "is_graph_candidate": true,
       "graph_rank": 25,
       "community": 0,
-      "is_target": false,
-      "is_winner": true,
+      "is_target": true,
+      "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.008249189955287969,
+        0.00395109432152333,
+        0.004581857629169737,
+        0.004441998630601108,
+        0.00468981477385259
+      ],
       "energy": [
         0.008249189955287969,
         0.005300080965649242,
@@ -602,9 +808,16 @@
       "is_graph_candidate": true,
       "graph_rank": 26,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
-      "is_final": false,
+      "is_target": true,
+      "is_winner": true,
+      "is_final": true,
+      "whole_energy": [
+        0.007880553255188227,
+        0.017757880871152654,
+        0.027632622200835153,
+        0.032329352062181085,
+        0.0362441990303848
+      ],
       "energy": [
         0.007880553255188227,
         0.03325069400105881,
@@ -625,9 +838,16 @@
       "is_graph_candidate": true,
       "graph_rank": 27,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0075879086609469916,
+        0.013726682098990431,
+        0.016369672637291353,
+        0.017886779777982573,
+        0.019039559517729548
+      ],
       "energy": [
         0.0075879086609469916,
         0.01887038505345659,
@@ -648,9 +868,16 @@
       "is_graph_candidate": true,
       "graph_rank": 28,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.007312697447077373,
+        0.011426043418866822,
+        0.009279928072742753,
+        0.010254190120758955,
+        0.010150046342999593
+      ],
       "energy": [
         0.007312697447077373,
         0.020391254282390834,
@@ -671,9 +898,16 @@
       "is_graph_candidate": true,
       "graph_rank": 29,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.006995761480484489,
+        0.0069957614804844895,
+        0.0069957614804844895,
+        0.0069957614804844895,
+        0.0069957614804844895
+      ],
       "energy": [
         0.006995761480484489,
         0.006995761480484489,
@@ -694,9 +928,16 @@
       "is_graph_candidate": true,
       "graph_rank": 30,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
+      "is_target": true,
+      "is_winner": true,
       "is_final": false,
+      "whole_energy": [
+        0.006617321040102277,
+        0.008994532792043939,
+        0.010773994501050798,
+        0.012912557061186738,
+        0.014724910301972094
+      ],
       "energy": [
         0.006617321040102277,
         0.011368561550607347,
@@ -718,8 +959,15 @@
       "graph_rank": 31,
       "community": 0,
       "is_target": false,
-      "is_winner": true,
+      "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.006347170559913343,
+        0.013335125903887305,
+        0.01394884160481287,
+        0.015128411021986803,
+        0.015243305388317207
+      ],
       "energy": [
         0.006347170559913343,
         0.008231746538383662,
@@ -740,9 +988,16 @@
       "is_graph_candidate": true,
       "graph_rank": 32,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.006114394392770702,
+        0.005836197406942421,
+        0.006301526839302945,
+        0.005697177270592675,
+        0.005764152000073085
+      ],
       "energy": [
         0.006114394392770702,
         0.00583619740694242,
@@ -763,9 +1018,16 @@
       "is_graph_candidate": true,
       "graph_rank": 33,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
-      "is_final": false,
+      "is_target": true,
+      "is_winner": true,
+      "is_final": true,
+      "whole_energy": [
+        0.005775206304675145,
+        0.005775206304675146,
+        0.005775206304675146,
+        0.005775206304675146,
+        0.005775206304675146
+      ],
       "energy": [
         0.005775206304675145,
         0.005775206304675145,
@@ -786,9 +1048,16 @@
       "is_graph_candidate": true,
       "graph_rank": 34,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
-      "is_final": false,
+      "is_target": true,
+      "is_winner": true,
+      "is_final": true,
+      "whole_energy": [
+        0.00553382855445565,
+        0.0047942101972514835,
+        0.00823770333742394,
+        0.010494957096091249,
+        0.011830509012452715
+      ],
       "energy": [
         0.00553382855445565,
         0.007256249550958598,
@@ -809,9 +1078,16 @@
       "is_graph_candidate": true,
       "graph_rank": 35,
       "community": 2,
-      "is_target": false,
-      "is_winner": false,
-      "is_final": false,
+      "is_target": true,
+      "is_winner": true,
+      "is_final": true,
+      "whole_energy": [
+        0.005363544564498235,
+        0.004741949759256999,
+        0.008179256474039725,
+        0.010428825143224614,
+        0.011758253304060481
+      ],
       "energy": [
         0.005363544564498235,
         0.00718605024888836,
@@ -832,9 +1108,16 @@
       "is_graph_candidate": true,
       "graph_rank": 36,
       "community": 1,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.005071926667729251,
+        0.0024195983840484695,
+        0.003363759890387552,
+        0.0040831740848745485,
+        0.004522744339335265
+      ],
       "energy": [
         0.005071926667729251,
         0.004072669074391196,
@@ -858,6 +1141,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -881,6 +1171,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -901,9 +1198,16 @@
       "is_graph_candidate": false,
       "graph_rank": null,
       "community": null,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -924,9 +1228,16 @@
       "is_graph_candidate": false,
       "graph_rank": null,
       "community": null,
-      "is_target": false,
+      "is_target": true,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -950,6 +1261,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -973,6 +1291,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -996,6 +1321,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1019,6 +1351,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1042,6 +1381,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1065,6 +1411,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1088,6 +1441,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1111,6 +1471,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1134,6 +1501,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1157,6 +1531,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1180,6 +1561,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1203,6 +1591,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1226,6 +1621,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1249,6 +1651,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1272,6 +1681,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1295,6 +1711,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1318,6 +1741,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1341,6 +1771,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1364,6 +1801,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1387,6 +1831,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1410,6 +1861,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1433,6 +1891,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1456,6 +1921,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1479,6 +1951,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1502,6 +1981,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1525,6 +2011,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1548,6 +2041,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1571,6 +2071,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1594,6 +2101,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1617,6 +2131,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1640,6 +2161,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1663,6 +2191,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1686,6 +2221,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1709,6 +2251,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1732,6 +2281,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1755,6 +2311,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1778,6 +2341,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1801,6 +2371,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1824,6 +2401,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1847,6 +2431,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1870,6 +2461,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1893,6 +2491,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1916,6 +2521,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1939,6 +2551,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1962,6 +2581,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -1985,6 +2611,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2008,6 +2641,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2031,6 +2671,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2054,6 +2701,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2077,6 +2731,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2100,6 +2761,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2123,6 +2791,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2146,6 +2821,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2169,6 +2851,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2192,6 +2881,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2215,6 +2911,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2238,6 +2941,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2261,6 +2971,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2284,6 +3001,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -2307,6 +3031,13 @@
       "is_target": false,
       "is_winner": false,
       "is_final": false,
+      "whole_energy": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
       "energy": [
         0.0,
         0.0,
@@ -3462,6 +4193,198 @@
       "reason": "embedding similarity above threshold"
     }
   ],
+  "whole_energy_steps": [
+    {
+      "pit_wall-2": 0.2620257400962107,
+      "aero-5": 0.12584832747322303,
+      "pit_wall-4": 0.08180040061269986,
+      "pit_wall-7": 0.060915994991593274,
+      "tyres-5": 0.0484432166173449,
+      "pit_wall-10": 0.04019861622079681,
+      "tyres-9": 0.034158908156988445,
+      "pit_wall-9": 0.029541520889320865,
+      "tyres-4": 0.02625090499229769,
+      "power_unit-5": 0.023493075038959126,
+      "power_unit-2": 0.021159907486584535,
+      "tyres-6": 0.01902721859751434,
+      "aero-6": 0.017521940290486173,
+      "pit_wall-5": 0.01626352601474426,
+      "power_unit-9": 0.015065640715492294,
+      "aero-10": 0.014102769422666188,
+      "power_unit-10": 0.01316154468876395,
+      "power_unit-4": 0.01210141949033953,
+      "aero-9": 0.011411094113634687,
+      "tyres-1": 0.010727857781249992,
+      "pit_wall-6": 0.010205396865243964,
+      "power_unit-3": 0.009692375776995497,
+      "tyres-2": 0.009231988385829743,
+      "aero-2": 0.008801112397890493,
+      "power_unit-1": 0.008249189955287969,
+      "tyres-3": 0.007880553255188227,
+      "power_unit-7": 0.0075879086609469916,
+      "aero-3": 0.007312697447077373,
+      "power_unit-6": 0.006995761480484489,
+      "tyres-10": 0.006617321040102277,
+      "pit_wall-3": 0.006347170559913343,
+      "aero-4": 0.006114394392770702,
+      "aero-7": 0.005775206304675145,
+      "tyres-7": 0.00553382855445565,
+      "tyres-8": 0.005363544564498235,
+      "aero-1": 0.005071926667729251
+    },
+    {
+      "pit_wall-2": 0.08691728867799535,
+      "aero-5": 0.0836383585164067,
+      "pit_wall-4": 0.07910498027212766,
+      "pit_wall-7": 0.06966407204586408,
+      "tyres-5": 0.0595551171227707,
+      "pit_wall-10": 0.051980732405021816,
+      "tyres-9": 0.05711491648240702,
+      "pit_wall-9": 0.06099513975839058,
+      "tyres-4": 0.054297878358726584,
+      "power_unit-5": 0.036857298314713044,
+      "power_unit-2": 0.014172263728650065,
+      "tyres-6": 0.04561005904113726,
+      "aero-6": 0.01932811798772045,
+      "pit_wall-5": 0.049555918597819874,
+      "power_unit-9": 0.0052978254733341236,
+      "aero-10": 0.007795429241617298,
+      "power_unit-10": 0.021754678202032043,
+      "power_unit-4": 0.01346649753210625,
+      "aero-9": 0.011411094113634689,
+      "tyres-1": 0.010727857781249994,
+      "pit_wall-6": 0.010205396865243965,
+      "power_unit-3": 0.014247903874902065,
+      "tyres-2": 0.02033741319198485,
+      "aero-2": 0.016209479475020133,
+      "power_unit-1": 0.00395109432152333,
+      "tyres-3": 0.017757880871152654,
+      "power_unit-7": 0.013726682098990431,
+      "aero-3": 0.011426043418866822,
+      "power_unit-6": 0.0069957614804844895,
+      "tyres-10": 0.008994532792043939,
+      "pit_wall-3": 0.013335125903887305,
+      "aero-4": 0.005836197406942421,
+      "aero-7": 0.005775206304675146,
+      "tyres-7": 0.0047942101972514835,
+      "tyres-8": 0.004741949759256999,
+      "aero-1": 0.0024195983840484695
+    },
+    {
+      "pit_wall-2": 0.08236546942678574,
+      "aero-5": 0.08644505787078895,
+      "pit_wall-4": 0.08561967828467429,
+      "pit_wall-7": 0.07545339693447177,
+      "tyres-5": 0.060074455890017225,
+      "pit_wall-10": 0.04447492288110813,
+      "tyres-9": 0.05617183378432222,
+      "pit_wall-9": 0.04717920470747985,
+      "tyres-4": 0.051476758459921605,
+      "power_unit-5": 0.04075003442305002,
+      "power_unit-2": 0.019611726870129725,
+      "tyres-6": 0.03909553101162097,
+      "aero-6": 0.016926754623317906,
+      "pit_wall-5": 0.04271022801169061,
+      "power_unit-9": 0.007067268136883484,
+      "aero-10": 0.010060594578245069,
+      "power_unit-10": 0.009824628778950437,
+      "power_unit-4": 0.010734595400611308,
+      "aero-9": 0.011411094113634689,
+      "tyres-1": 0.010727857781249994,
+      "pit_wall-6": 0.010205396865243965,
+      "power_unit-3": 0.013410452437692793,
+      "tyres-2": 0.029717138735735265,
+      "aero-2": 0.01704578902015758,
+      "power_unit-1": 0.004581857629169737,
+      "tyres-3": 0.027632622200835153,
+      "power_unit-7": 0.016369672637291353,
+      "aero-3": 0.009279928072742753,
+      "power_unit-6": 0.0069957614804844895,
+      "tyres-10": 0.010773994501050798,
+      "pit_wall-3": 0.01394884160481287,
+      "aero-4": 0.006301526839302945,
+      "aero-7": 0.005775206304675146,
+      "tyres-7": 0.00823770333742394,
+      "tyres-8": 0.008179256474039725,
+      "aero-1": 0.003363759890387552
+    },
+    {
+      "pit_wall-2": 0.06835250609940051,
+      "aero-5": 0.08255535348142393,
+      "pit_wall-4": 0.08219814595057283,
+      "pit_wall-7": 0.07273623236596936,
+      "tyres-5": 0.057428189761738926,
+      "pit_wall-10": 0.04353884799470841,
+      "tyres-9": 0.05789908746569837,
+      "pit_wall-9": 0.0469357408225457,
+      "tyres-4": 0.0536322938045043,
+      "power_unit-5": 0.04202287268239984,
+      "power_unit-2": 0.021983088894003952,
+      "tyres-6": 0.04037203297896769,
+      "aero-6": 0.017488233032367368,
+      "pit_wall-5": 0.041825200777913976,
+      "power_unit-9": 0.005911886813642655,
+      "aero-10": 0.009909037575349965,
+      "power_unit-10": 0.007691502386920197,
+      "power_unit-4": 0.011644496535904133,
+      "aero-9": 0.011411094113634689,
+      "tyres-1": 0.010727857781249994,
+      "pit_wall-6": 0.010205396865243965,
+      "power_unit-3": 0.01437048740243944,
+      "tyres-2": 0.03437645418037813,
+      "aero-2": 0.018355570178381745,
+      "power_unit-1": 0.004441998630601108,
+      "tyres-3": 0.032329352062181085,
+      "power_unit-7": 0.017886779777982573,
+      "aero-3": 0.010254190120758955,
+      "power_unit-6": 0.0069957614804844895,
+      "tyres-10": 0.012912557061186738,
+      "pit_wall-3": 0.015128411021986803,
+      "aero-4": 0.005697177270592675,
+      "aero-7": 0.005775206304675146,
+      "tyres-7": 0.010494957096091249,
+      "tyres-8": 0.010428825143224614,
+      "aero-1": 0.0040831740848745485
+    },
+    {
+      "pit_wall-2": 0.06379726583963938,
+      "aero-5": 0.08159032787938855,
+      "pit_wall-4": 0.08141153296396333,
+      "pit_wall-7": 0.07148114479328287,
+      "tyres-5": 0.055774515820129114,
+      "pit_wall-10": 0.04145759185554271,
+      "tyres-9": 0.05869490827190569,
+      "pit_wall-9": 0.04435375004455443,
+      "tyres-4": 0.05405779893706453,
+      "power_unit-5": 0.04183881882306249,
+      "power_unit-2": 0.02422668172636192,
+      "tyres-6": 0.039698261258217106,
+      "aero-6": 0.016651889390308965,
+      "pit_wall-5": 0.03982533842756029,
+      "power_unit-9": 0.005713542371421866,
+      "aero-10": 0.01044065491153098,
+      "power_unit-10": 0.006313688228311789,
+      "power_unit-4": 0.012346747108001857,
+      "aero-9": 0.011411094113634689,
+      "tyres-1": 0.010727857781249994,
+      "pit_wall-6": 0.010205396865243965,
+      "power_unit-3": 0.014498482998128333,
+      "tyres-2": 0.03789254257059711,
+      "aero-2": 0.018851705224561064,
+      "power_unit-1": 0.00468981477385259,
+      "tyres-3": 0.0362441990303848,
+      "power_unit-7": 0.019039559517729548,
+      "aero-3": 0.010150046342999593,
+      "power_unit-6": 0.0069957614804844895,
+      "tyres-10": 0.014724910301972094,
+      "pit_wall-3": 0.015243305388317207,
+      "aero-4": 0.005764152000073085,
+      "aero-7": 0.005775206304675146,
+      "tyres-7": 0.011830509012452715,
+      "tyres-8": 0.011758253304060481,
+      "aero-1": 0.004522744339335265
+    }
+  ],
   "energy_steps": [
     {
       "pit_wall-2": 0.2620257400962107,
@@ -3656,31 +4579,82 @@
   ],
   "basins": [
     {
+      "id": 2,
+      "label": "basin-2",
+      "score": 0.5099698662267229,
+      "seed_energy": 0.22946920887123368,
+      "whole_energy": 0.3774690638906013,
+      "whole_energy_delta": 0.14799985501936763,
+      "energy": 0.2294692088712337,
+      "energy_delta": 2.7755575615628914e-17,
+      "energy_component": 0.10326114399205517,
+      "support_component": 0.25,
+      "cohesion_component": 0.15670872223466778,
+      "cohesion": 0.7835436111733388,
+      "support": 18,
+      "duplicate_penalty": 0.0,
+      "documents": [
+        "tyres-4",
+        "tyres-3",
+        "tyres-8",
+        "tyres-7",
+        "aero-7",
+        "tyres-9",
+        "aero-9",
+        "power_unit-4",
+        "power_unit-10",
+        "pit_wall-6",
+        "tyres-6",
+        "power_unit-6",
+        "tyres-2",
+        "tyres-10",
+        "power_unit-2",
+        "aero-2",
+        "power_unit-9",
+        "tyres-1"
+      ],
+      "target_fraction": 0.9444444444444444
+    },
+    {
       "id": 0,
       "label": "basin-0",
-      "score": 0.6118175877982225,
+      "score": 0.48681758779822243,
+      "seed_energy": 0.4816773511222076,
+      "whole_energy": 0.35112120994100693,
+      "whole_energy_delta": -0.13055614118120068,
       "energy": 0.4816773511222077,
+      "energy_delta": 1.1102230246251565e-16,
+      "energy_component": 0.21675480800499347,
+      "support_component": 0.125,
+      "cohesion_component": 0.157562779793229,
       "cohesion": 0.787813898966145,
       "support": 9,
       "duplicate_penalty": 0.012499999999999999,
       "documents": [
-        "tyres-5",
-        "power_unit-3",
-        "pit_wall-9",
         "pit_wall-2",
-        "pit_wall-10",
-        "power_unit-1",
-        "pit_wall-5",
         "pit_wall-7",
+        "tyres-5",
+        "pit_wall-10",
+        "pit_wall-9",
+        "pit_wall-5",
+        "power_unit-3",
+        "power_unit-1",
         "pit_wall-3"
       ],
-      "target_fraction": 0.0
+      "target_fraction": 0.3333333333333333
     },
     {
       "id": 1,
       "label": "basin-1",
-      "score": 0.5354891309180883,
+      "score": 0.4104891309180882,
+      "seed_energy": 0.2888534400065587,
+      "whole_energy": 0.2714097261683918,
+      "whole_energy_delta": -0.017443713838166897,
       "energy": 0.2888534400065587,
+      "energy_delta": 0.0,
+      "energy_component": 0.12998404800295144,
+      "support_component": 0.125,
+      "cohesion_component": 0.15550508291513676,
       "cohesion": 0.7775254145756837,
       "support": 9,
       "duplicate_penalty": 0.0,
@@ -3695,61 +4669,33 @@
         "aero-4",
         "aero-1"
       ],
-      "target_fraction": 0.0
-    },
-    {
-      "id": 2,
-      "label": "basin-2",
-      "score": 0.5099698662267229,
-      "energy": 0.2294692088712337,
-      "cohesion": 0.7835436111733388,
-      "support": 18,
-      "duplicate_penalty": 0.0,
-      "documents": [
-        "tyres-9",
-        "tyres-4",
-        "power_unit-2",
-        "tyres-6",
-        "power_unit-9",
-        "power_unit-10",
-        "power_unit-4",
-        "aero-9",
-        "tyres-1",
-        "pit_wall-6",
-        "tyres-2",
-        "aero-2",
-        "tyres-3",
-        "power_unit-6",
-        "tyres-10",
-        "aero-7",
-        "tyres-7",
-        "tyres-8"
-      ],
-      "target_fraction": 0.0
+      "target_fraction": 0.8888888888888888
     }
   ],
   "winner": {
-    "label": "basin-0",
+    "label": "basin-2",
     "documents": [
-      "tyres-5",
-      "power_unit-3",
-      "pit_wall-9",
-      "pit_wall-2",
-      "pit_wall-10"
+      "tyres-4",
+      "tyres-3",
+      "tyres-8",
+      "tyres-7",
+      "aero-7"
     ],
-    "score": 0.6118175877982225
+    "score": 0.5099698662267229
   },
   "metrics": {
     "modularity": 0.20328906255584042,
     "dispersion": 0.024655727253656775,
-    "uncertainty": 0.6390366144743499,
-    "target_fraction_top5": 0.0
+    "uncertainty": 0.6747475249752627,
+    "hybrid_seed_winner": "basin-0",
+    "target_fraction_top5": 1.0
   },
   "steps": [
     "corpus",
     "hybrid",
     "graph",
     "spectral",
+    "whole-diffusion",
     "diffusion",
     "basins",
     "final"

@@ -7,10 +7,11 @@ done by lexical and semantic retrieval without treating raw top-k rank as the
 final answer.
 
 After initialization, diffusion lets retrieval confidence move across selected
-evidence edges in discrete time steps. In the reconciliation pipeline, spectral
-detection runs first, then diffusion is constrained to edges whose endpoints are
-inside the same detected basin. A node keeps some energy and sends the rest to
-same-basin neighbors in proportion to edge weight. We use this because
+evidence edges in discrete time steps. The same update can be used in two ways.
+Whole-graph diffusion keeps every edge open and acts as a diagnostic: it shows
+whether a basin absorbs energy from the surrounding field or leaks energy into
+neighbors. Basin-constrained diffusion removes cross-basin edges before scoring,
+so competing explanations do not feed one another. We use this because
 supporting evidence often appears across multiple related chunks: diffusion lets
 a cluster of mutually reinforcing candidates become visible before the final LLM
 prompt is constructed.
@@ -44,9 +45,9 @@ Key variables:
     `graph`: Weighted adjacency mapping. Edge weights control how movable energy
         is distributed to neighbors.
     `communities`: Spectral basin assignment by document id.
-    `basin_graph`: Graph with cross-basin edges removed. Diffusion uses this
-        after basin detection so energy can settle inside fixed regions without
-        leaking between competing regions.
+    `basin_graph`: Graph with cross-basin edges removed. Scoring diffusion uses
+        this after basin detection so energy can settle inside fixed regions
+        without leaking between competing regions.
     `damping`: Fraction of each node's current energy allowed to move during one
         time step. A higher value trusts graph structure more; a lower value
         keeps more confidence local to the original candidate.

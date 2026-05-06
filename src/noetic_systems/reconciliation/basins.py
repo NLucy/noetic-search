@@ -29,9 +29,13 @@ Key variables:
     `cohesion`: Mean internal edge strength inside a basin. Higher cohesion
         means the basin hangs together structurally.
     `support_score`: Bounded score for having enough members to represent an
-        evidence position. It is capped so size alone cannot win.
+        evidence position. It grows with basin size until the support saturation
+        point, then stops so size alone cannot win indefinitely.
     `duplicate_penalty`: Penalty for basins dominated by near-duplicate internal
         relationships.
+    `BASIN_SUPPORT_SATURATION`: Basin size that receives full support credit.
+        Smaller basins can still win, but broader coherent basins are no longer
+        treated as equivalent to barely-supported regions.
     `score`: Final basin score. It balances settled energy, support, cohesion,
         and duplicate pressure.
     `modularity`: Strength of the graph partition compared with a random graph
@@ -50,6 +54,8 @@ from noetic_systems.reconciliation.metrics import (
     duplicate_penalty as calculate_duplicate_penalty,
 )
 from noetic_systems.reconciliation.models import Basin
+
+BASIN_SUPPORT_SATURATION = 18
 
 
 def build_basins(
@@ -79,7 +85,7 @@ def build_basins(
         cohesion = calculate_cohesion(doc_ids, graph)
         duplicate_penalty = calculate_duplicate_penalty(doc_ids, graph)
         basin_energy = float(sum(energy_by_doc.values()))
-        support_score = min(1.0, len(doc_ids) / 6.0)
+        support_score = min(1.0, len(doc_ids) / BASIN_SUPPORT_SATURATION)
         # The field score uses settled graph signal, basin support, cohesion, and
         # duplicate pressure. It avoids source-level assumptions.
         score = (

@@ -16,7 +16,10 @@ Key variables:
     `edge_threshold`: Minimum embedding similarity used to create graph edges.
     `points`: Browser-facing chunk records with 2D coordinates and pipeline
         flags.
-    `energy_steps`: Diffusion energy snapshots, one dictionary per time step.
+    `whole_energy_steps`: Diffusion energy snapshots over the full graph, before
+        cross-basin edges are removed. This is a diagnostic, not the scoring
+        distribution.
+    `energy_steps`: Diffusion energy snapshots inside fixed spectral basins.
 """
 
 from __future__ import annotations
@@ -29,7 +32,11 @@ from typing import Any
 import numpy as np
 
 from noetic_systems.database import Database
-from noetic_systems.reconciliation.basins import build_basins, calculate_uncertainty
+from noetic_systems.reconciliation.basins import (
+    BASIN_SUPPORT_SATURATION,
+    build_basins,
+    calculate_uncertainty,
+)
 from noetic_systems.reconciliation.diffusion import (
     constrain_graph_to_communities,
     diffuse,
@@ -108,6 +115,14 @@ def generate_trace(
         communities = detect_communities(graph)
 
         energy = seed_energy(graph_candidates)
+        initial_energy = dict(energy)
+
+        whole_energy = dict(energy)
+        whole_energy_steps = [dict(whole_energy)]
+        for _ in range(diffusion_steps):
+            whole_energy = diffuse(whole_energy, graph, damping)
+            whole_energy_steps.append(dict(whole_energy))
+
         basin_graph = constrain_graph_to_communities(graph, communities)
         energy_steps = [dict(energy)]
         for _ in range(diffusion_steps):
@@ -159,6 +174,7 @@ def generate_trace(
                 candidate_ranks,
                 graph_ranks,
                 communities,
+                whole_energy_steps,
                 energy_steps,
                 target_ids,
                 winner_ids,
@@ -195,13 +211,24 @@ def generate_trace(
                 }
                 for edge in evidence_edges
             ],
+            "whole_energy_steps": whole_energy_steps,
             "energy_steps": energy_steps,
             "basins": [
                 {
                     "id": basin.id,
                     "label": basin.label,
                     "score": basin.score,
+                    "seed_energy": basin_seed_energy(basin.documents, initial_energy),
+                    "whole_energy": basin_seed_energy(basin.documents, whole_energy),
+                    "whole_energy_delta": basin_seed_energy(basin.documents, whole_energy)
+                    - basin_seed_energy(basin.documents, initial_energy),
                     "energy": basin.energy,
+                    "energy_delta": basin.energy
+                    - basin_seed_energy(basin.documents, initial_energy),
+                    "energy_component": 0.45 * basin.energy,
+                    "support_component": 0.25
+                    * min(1.0, basin.support / BASIN_SUPPORT_SATURATION),
+                    "cohesion_component": 0.20 * basin.cohesion,
                     "cohesion": basin.cohesion,
                     "support": basin.support,
                     "duplicate_penalty": basin.duplicate_penalty,
@@ -219,6 +246,7 @@ def generate_trace(
                 "modularity": modularity,
                 "dispersion": dispersion,
                 "uncertainty": uncertainty,
+                "hybrid_seed_winner": hybrid_seed_winner(basins, initial_energy),
                 "target_fraction_top5": target_fraction(
                     winner.documents[:5] if winner else [],
                     target_ids,
@@ -229,6 +257,7 @@ def generate_trace(
                 "hybrid",
                 "graph",
                 "spectral",
+                "whole-diffusion",
                 "diffusion",
                 "basins",
                 "final",
@@ -268,9 +297,12 @@ def multi_basin_trace_data() -> dict[str, Any]:
     which is correct but visually unhelpful when teaching basin formation. This
     trace corpus stays inside one Formula 1 race debrief, then creates internal
     evidence regions around tyres, power unit, aero, and pit-wall strategy. The
-    goal is a teaching example where basins emerge inside one shared field and a
-    multi-hop explanation can be inspected without domain jargon getting in the
-    way.
+    pit-wall material is the obvious high-seed explanation. The broader
+    tyre/aero/power-unit material is the target explanation: the strategy call
+    mattered, but the stronger answer is that the restart exposed a compound
+    race-pace failure. The goal is a teaching example where basins emerge inside
+    one shared field and a multi-hop explanation can be inspected without domain
+    jargon getting in the way.
 
     Returns:
         Benchmark-shaped payload consumed by `generate_trace`.
@@ -328,6 +360,8 @@ def multi_basin_trace_data() -> dict[str, Any]:
 
     corpus: list[dict[str, Any]] = []
     for topic, phrases in topics.items():
+        gold = "decoy" if topic == "pit_wall" else "target"
+        stance = "obvious-strategy-decoy" if topic == "pit_wall" else "race-pace-failure"
         for index, phrase in enumerate(phrases, start=1):
             doc_id = f"{topic}-{index}"
             corpus.append(
@@ -344,6 +378,8 @@ def multi_basin_trace_data() -> dict[str, Any]:
                         "domain": "formula1",
                         "title": f"{topic} race evidence {index}",
                         "case": MULTI_BASIN_TRACE_CASE_ID,
+                        "gold": gold,
+                        "stance": stance,
                     },
                 }
             )
@@ -380,9 +416,11 @@ def multi_basin_trace_data() -> dict[str, Any]:
                     "after the safety car and miss the podium"
                 ),
                 "expected_stance": (
-                    "The trace should show several coherent race-debrief "
-                    "regions in one Formula 1 corpus, then choose the strongest "
-                    "region after diffusion and basin scoring."
+                    "The obvious strategy explanation should receive high "
+                    "initial hybrid seed energy, but the selected answer should "
+                    "come from the broader race-pace failure region: tyre "
+                    "warmup and degradation, dirty air and aero balance, and "
+                    "power-unit deployment limits after the safety car."
                 ),
             }
         },
@@ -521,6 +559,7 @@ def point_record(
     candidate_ranks: dict[str, int],
     graph_ranks: dict[str, int],
     communities: dict[str, int],
+    whole_energy_steps: list[dict[str, float]],
     energy_steps: list[dict[str, float]],
     target_ids: set[str],
     winner_ids: set[str],
@@ -535,6 +574,7 @@ def point_record(
         candidate_ranks: Hybrid rank by document id.
         graph_ranks: Graph-candidate rank by document id.
         communities: Spectral community id by document id.
+        whole_energy_steps: Full-graph diffusion energy snapshots.
         energy_steps: Diffusion energy snapshots.
         target_ids: Target evidence ids.
         winner_ids: Winning basin ids.
@@ -558,6 +598,10 @@ def point_record(
         "is_target": doc_id in target_ids,
         "is_winner": doc_id in winner_ids,
         "is_final": doc_id in final_ids,
+        "whole_energy": [
+            float(step.get(doc_id, 0.0))
+            for step in whole_energy_steps
+        ],
         "energy": [
             float(step.get(doc_id, 0.0))
             for step in energy_steps
@@ -590,6 +634,43 @@ def graph_edges(graph: dict[str, dict[str, float]]) -> list[dict[str, Any]]:
                 }
             )
     return sorted(edges, key=lambda edge: edge["weight"], reverse=True)
+
+
+def basin_seed_energy(
+    doc_ids: list[str] | tuple[str, ...],
+    initial_energy: dict[str, float],
+) -> float:
+    """Calculate the initial hybrid-seeded energy inside a basin.
+
+    Args:
+        doc_ids: Basin document ids.
+        initial_energy: Energy assigned before diffusion starts.
+
+    Returns:
+        Total initial energy in the basin.
+    """
+    return float(sum(initial_energy.get(doc_id, 0.0) for doc_id in doc_ids))
+
+
+def hybrid_seed_winner(
+    basins: list[Any],
+    initial_energy: dict[str, float],
+) -> str:
+    """Return the basin with the largest initial hybrid energy.
+
+    Args:
+        basins: Scored basins.
+        initial_energy: Energy assigned before diffusion starts.
+
+    Returns:
+        Label of the basin that started with the most retrieval energy.
+    """
+    if not basins:
+        return "none"
+    return max(
+        basins,
+        key=lambda basin: basin_seed_energy(basin.documents, initial_energy),
+    ).label
 
 
 def target_fraction(

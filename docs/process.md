@@ -4,7 +4,7 @@
     <h1>How Noetic Search turns retrieved chunks into a selected evidence basin.</h1>
     <p>
       The pipeline follows the implementation order:
-      <code>candidates -> graph -> spectral -> diffusion -> basins -> uncertainty -> ranking -> result</code>.
+      <code>candidates -> graph -> spectral -> whole-graph diffusion diagnostic -> basin diffusion -> basins -> uncertainty -> ranking -> result</code>.
       Each step has a narrow mathematical role and a concrete artifact.
     </p>
   </section>
@@ -150,16 +150,15 @@ split Fiedler values -> candidate regions</pre>
     </article>
 
     <article class="math-item">
-      <div class="math-tag">4. Diffusion</div>
+      <div class="math-tag">4. Whole-Graph Diffusion</div>
       <div class="math-section">
-        <h2>Initialize and redistribute retrieval energy over the fixed graph.</h2>
+        <h2>Let query energy move over the full graph.</h2>
         <div class="math-block">
           <h3>Intuition</h3>
           <p>
             Hybrid rank should matter because retrieval did useful work, but it
-            should not be final truth. Diffusion starts from that retrieval
-            signal, then asks where confidence settles after moving through
-            evidence relationships.
+            should not be final truth. Whole-graph diffusion asks where that
+            retrieval signal wants to move when every graph edge is available.
           </p>
         </div>
         <div class="math-block">
@@ -168,8 +167,9 @@ split Fiedler values -> candidate regions</pre>
             Each candidate receives initial energy from its retrieval score,
             discounted by rank and normalized to sum to <code>1.0</code>. At
             each time step, a node keeps some energy and passes the rest to
-            neighbors in proportion to edge weight. The energy is normalized
-            after each step.
+            neighbors in proportion to edge weight. Because cross-basin edges
+            are still open, this diagnostic measures attraction, leakage, and
+            absorption across the candidate field.
           </p>
         </div>
         <pre>raw_i = retrieval_score_i / (rank_i + 1)
@@ -177,34 +177,64 @@ energy_i = raw_i / sum(raw)
 next_i = (1 - d) * energy_i
        + d * sum_j energy_j * A[j,i] / degree_j</pre>
         <p class="say-it">
-          Diffusion updates node energy. It does not detect basin boundaries.
+          Whole-graph diffusion is diagnostic. It shows whether a basin absorbs
+          or loses query energy before scoring keeps basins separate.
         </p>
       </div>
     </article>
 
     <article class="math-item">
-      <div class="math-tag">5. Basins</div>
+      <div class="math-tag">5. Basin Diffusion</div>
+      <div class="math-section">
+        <h2>Redistribute energy inside fixed spectral basins.</h2>
+        <div class="math-block">
+          <h3>Intuition</h3>
+          <p>
+            Once competing regions are known, scoring should not let one
+            explanation feed another. Cross-basin edges helped expose the
+            structure, but final basin comparison should evaluate fixed regions.
+          </p>
+        </div>
+        <div class="math-block">
+          <h3>Mechanics</h3>
+          <p>
+            Remove edges whose endpoints belong to different spectral basins,
+            then run the same time-step update inside each basin. Total energy
+            is conserved per basin, so this step measures where support settles
+            internally instead of moving energy between competitors.
+          </p>
+        </div>
+        <pre>basin_graph = graph without cross-basin edges
+basin_energy = diffuse(seed_energy, basin_graph)</pre>
+      </div>
+    </article>
+
+    <article class="math-item">
+      <div class="math-tag">6. Basins</div>
       <div class="math-section">
         <h2>Score the fixed spectral basins.</h2>
         <div class="math-block">
           <h3>Intuition</h3>
           <p>
-            Spectral already proposed the basin boundaries. Diffusion updated
-            energy on nodes. Basin scoring now chooses the strongest fixed
-            region.
+            Spectral proposed basin boundaries. Whole-graph diffusion shows
+            attraction and leakage. Basin-constrained diffusion updates energy
+            inside each fixed region. Basin scoring now chooses the strongest
+            evidence region.
           </p>
         </div>
         <div class="math-block">
           <h3>Mechanics</h3>
           <p>
             Each fixed basin receives a score from settled energy, support,
-            cohesion, and duplicate pressure.
+            cohesion, and duplicate pressure. Support is capped, but it does
+            not saturate immediately; a broader coherent region can beat a
+            narrower region that received more initial hybrid energy.
           </p>
         </div>
-        <pre>score = energy + support + cohesion - duplicate_penalty</pre>
+        <pre>score = 0.45*energy + 0.25*support + 0.20*cohesion - duplicate_penalty</pre>
         <div class="symbols">
           <div><code>energy</code><span>Diffused retrieval signal settled inside the basin.</span></div>
-          <div><code>support</code><span>Enough useful chunks to represent an evidence position.</span></div>
+          <div><code>support</code><span>Bounded count of chunks in the basin, saturated at the configured support limit.</span></div>
           <div><code>cohesion</code><span>Mean internal edge strength.</span></div>
           <div><code>duplicate_penalty</code><span>Penalty for repeated evidence masquerading as support.</span></div>
         </div>
@@ -212,7 +242,7 @@ next_i = (1 - d) * energy_i
     </article>
 
     <article class="math-item">
-      <div class="math-tag">6. Uncertainty</div>
+      <div class="math-tag">7. Uncertainty</div>
       <div class="math-section">
         <h2>Measure whether the basin decision was clean.</h2>
         <div class="math-block">
@@ -235,7 +265,7 @@ next_i = (1 - d) * energy_i
     </article>
 
     <article class="math-item">
-      <div class="math-tag">7. Ranking</div>
+      <div class="math-tag">8. Ranking</div>
       <div class="math-section">
         <h2>Choose representatives inside the winning basin.</h2>
         <div class="math-block">
@@ -257,7 +287,7 @@ next_i = (1 - d) * energy_i
     </article>
 
     <article class="math-item">
-      <div class="math-tag">8. Result</div>
+      <div class="math-tag">9. Result</div>
       <div class="math-section">
         <h2>Expose chunks or the inspection field.</h2>
         <div class="math-block">
