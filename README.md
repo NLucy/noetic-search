@@ -18,8 +18,7 @@ query
   -> hybrid candidates
   -> candidate graph
   -> spectral basin boundaries
-  -> seed retrieval energy
-  -> diffuse energy over fixed graph
+  -> initialize and diffuse retrieval energy over fixed graph
   -> score fixed basins
   -> rank winning-basin chunks
   -> chunks or inspection field
@@ -44,12 +43,19 @@ Then open:
 http://127.0.0.1:8000/
 ```
 
-The documentation has two entry points:
+The documentation has three entry points:
 
 - `Overview`: high-level system description and return surfaces.
 - `The Math`: step-by-step treatment of candidates, graph construction,
   spectral detection, diffusion, basin scoring, uncertainty, ranking,
   and result formatting.
+- `Trace Viewer`: browser visualization of one real benchmark query moving
+  through retrieval, graph construction, spectral basins, diffusion, basin
+  scoring, and final chunk return.
+
+The committed documentation is the source of truth for the current algorithm.
+Private study notes, sketches, and local presentation artifacts are not required
+to run or understand the package.
 
 ## Tests
 
@@ -106,6 +112,31 @@ target-heavy basin ranked first: 10/10
 The benchmark mixes ten decision domains with plausible decoys, stale notes,
 duplicated evidence, unrelated distractor documents, and distributed target
 evidence. Blind mode strips benchmark-only labels before indexing.
+
+## Trace Viewer
+
+Generate the default browser trace. The default is a built-in homogeneous
+payments case designed to show multiple spectral basins clearly.
+
+```bash
+uv run noetic trace
+```
+
+To inspect a hard benchmark case instead, pass its case id:
+
+```bash
+uv run noetic trace --case payments_release
+```
+
+Serve the docs and open `Trace Viewer`:
+
+```bash
+uv run mkdocs serve
+```
+
+The trace shows the corpus as a neutral field, highlights hybrid candidates,
+draws evidence edges, colors spectral basins, animates diffusion energy over
+time steps, and marks the final returned chunks.
 
 ## LLM Harness
 

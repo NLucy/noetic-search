@@ -149,12 +149,6 @@ def main() -> None:
         help="embedding similarity threshold for graph edges",
     )
     parser.add_argument(
-        "--return-ranker",
-        choices=["specificity", "purifier"],
-        default="specificity",
-        help="strategy for selecting final chunks from the winning basin",
-    )
-    parser.add_argument(
         "--limit-cases",
         type=int,
         default=None,
@@ -212,7 +206,6 @@ def main() -> None:
             candidate_limit=args.candidate_limit,
             result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
-            return_ranker=args.return_ranker,
         )
         reconcile_times.append((time.perf_counter() - reconcile_start) * 1000)
         candidates = reconciler.hybrid.search(query, limit=args.candidate_limit)
@@ -294,7 +287,6 @@ def main() -> None:
         "candidate_limit": args.candidate_limit,
         "result_limit": args.result_limit,
         "edge_threshold": args.edge_threshold,
-        "return_ranker": args.return_ranker,
         "baseline_majority_top5_accuracy": baseline_hits / total if total else 0.0,
         "baseline_top1_decoy_rate": baseline_decoy_top / total if total else 0.0,
         "strongest_basin_majority_accuracy": basin_majority_hits / total if total else 0.0,
@@ -311,7 +303,6 @@ def main() -> None:
 
     print("=== HARD RAG BENCHMARK ===")
     print(f"mode: {metrics['mode']}")
-    print(f"return ranker: {metrics['return_ranker']}")
     print(f"candidate/result limit: {args.candidate_limit}/{args.result_limit}")
     print(f"edge threshold: {args.edge_threshold:.2f}")
     print(f"documents: {metrics['documents']}")

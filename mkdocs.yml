@@ -9,6 +9,7 @@ theme:
 nav:
   - Overview: index.md
   - The Math: process.md
+  - Trace Viewer: trace.md
 
 extra_css:
   - stylesheets/clean.css

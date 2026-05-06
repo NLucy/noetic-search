@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 from noetic_systems.corpus import demo_corpus
 from noetic_systems.database import Database
 from noetic_systems.llm.experiment import build_llm_experiment
 from noetic_systems.llm.openai_client import OpenAIResponsesClient
 from noetic_systems.reconciliation.engine import Reconciler
+from noetic_systems.trace import (
+    DEFAULT_TRACE_EDGE_THRESHOLD,
+    DEFAULT_TRACE_PATH,
+    MULTI_BASIN_TRACE_CASE_ID,
+    generate_trace,
+)
 
 
 QUERIES = {
@@ -61,11 +68,70 @@ def main() -> None:
         help="OpenAI model id; defaults to NOETIC_OPENAI_MODEL or the client default",
     )
 
+    trace = subparsers.add_parser("trace")
+    trace.add_argument(
+        "--case",
+        default=MULTI_BASIN_TRACE_CASE_ID,
+        help=(
+            "trace case id to visualize; the default is a built-in multi-basin "
+            "teaching case"
+        ),
+    )
+    trace.add_argument(
+        "--data-path",
+        type=Path,
+        default=Path("tests/data/hard_rag_benchmark.json"),
+        help="hard benchmark JSON path",
+    )
+    trace.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_TRACE_PATH,
+        help="trace JSON output path consumed by the docs viewer",
+    )
+    trace.add_argument(
+        "--max-points",
+        type=int,
+        default=500,
+        help="maximum corpus points to include in the browser view",
+    )
+    trace.add_argument(
+        "--candidate-limit",
+        type=int,
+        default=50,
+        help="hybrid candidates to retrieve for the trace",
+    )
+    trace.add_argument(
+        "--result-limit",
+        type=int,
+        default=30,
+        help="candidates admitted into the local graph",
+    )
+    trace.add_argument(
+        "--diffusion-steps",
+        type=int,
+        default=10,
+        help="diffusion time steps to capture",
+    )
+    trace.add_argument(
+        "--edge-threshold",
+        type=float,
+        default=DEFAULT_TRACE_EDGE_THRESHOLD,
+        help="embedding similarity threshold for graph edges",
+    )
+    trace.add_argument(
+        "--labeled",
+        action="store_true",
+        help="index benchmark labels instead of blind deployable metadata",
+    )
+
     args = parser.parse_args()
     if args.command == "demo":
         run_demo(args.query)
     elif args.command == "llm-demo":
         run_llm_demo(args.query, args.mode, args.call_api, args.model)
+    elif args.command == "trace":
+        run_trace(args)
 
 
 def run_demo(query_name: str) -> None:
@@ -99,6 +165,33 @@ def run_demo(query_name: str) -> None:
         )
 
     database.reset()
+
+
+def run_trace(args: argparse.Namespace) -> None:
+    """Generate the browser visualization trace.
+
+    Args:
+        args: Parsed CLI arguments for the trace command.
+
+    Returns:
+        None.
+    """
+    trace = generate_trace(
+        data_path=args.data_path,
+        output_path=args.output,
+        case_id=args.case,
+        blind=not args.labeled,
+        max_points=args.max_points,
+        candidate_limit=args.candidate_limit,
+        result_limit=args.result_limit,
+        diffusion_steps=args.diffusion_steps,
+        edge_threshold=args.edge_threshold,
+    )
+    print(f"wrote trace: {args.output}")
+    print(f"case: {trace['case']['id']}")
+    print(f"points: {len(trace['points'])}")
+    print(f"edges: {len(trace['edges'])}")
+    print(f"winner: {trace['winner']['label']} score={trace['winner']['score']:.3f}")
 
 
 def run_llm_demo(
