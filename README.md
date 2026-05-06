@@ -1,6 +1,7 @@
 # Noetic Search
 
-Noetic Search is a post-retrieval reconciliation layer for hybrid search.
+Noetic Search (from *noesis*, direct intellectual apprehension or understanding)
+is a post-retrieval reconciliation layer for hybrid search.
 
 The system assumes a conventional first-stage retriever has already produced a
 candidate set. It then builds a local weighted graph over those candidates,
