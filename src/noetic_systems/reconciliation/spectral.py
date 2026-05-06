@@ -31,6 +31,9 @@ Key variables:
         values provide the candidate split.
     `SPECTRAL_MIN_SPLIT_SIZE`: Smallest accepted basin size. This prevents tiny
         fragments from becoming fake discoveries.
+    `SPECTRAL_MAX_DEPTH`: Maximum recursive split depth. A depth of 2 can
+        produce up to four accepted basins while still keeping the local field
+        compact enough to inspect.
     `SPECTRAL_MIN_SPLIT_MODULARITY`: Required modularity improvement for a split
         to be accepted.
 """
@@ -40,7 +43,7 @@ from __future__ import annotations
 import numpy as np
 
 SPECTRAL_MIN_SPLIT_SIZE = 4
-SPECTRAL_MAX_DEPTH = 1
+SPECTRAL_MAX_DEPTH = 2
 SPECTRAL_MIN_SPLIT_MODULARITY = 0.10
 
 

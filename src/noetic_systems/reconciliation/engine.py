@@ -40,7 +40,11 @@ from dataclasses import replace
 
 from noetic_systems.database import Database
 from noetic_systems.reconciliation.basins import build_basins, calculate_uncertainty
-from noetic_systems.reconciliation.diffusion import diffuse, seed_energy
+from noetic_systems.reconciliation.diffusion import (
+    constrain_graph_to_communities,
+    diffuse,
+    seed_energy,
+)
 from noetic_systems.reconciliation.graph import (
     EMBEDDING_EDGE_THRESHOLD,
     build_evidence_graph,
@@ -136,10 +140,13 @@ class Reconciler:
         if not communities:
             return empty_result(query)
 
-        # Initialize from retrieval rank, then let confidence move over fixed edges.
+        # Initialize from retrieval rank, then let confidence move inside the
+        # fixed spectral basins. Cross-basin edges helped define the partition,
+        # but diffusion should not let one competing region feed another.
         energy = seed_energy(graph_candidates)
+        basin_graph = constrain_graph_to_communities(graph, communities)
         for _ in range(diffusion_steps):
-            energy = diffuse(energy, graph, damping)
+            energy = diffuse(energy, basin_graph, damping)
 
         basins = build_basins(communities, energy, graph)
         if not basins:

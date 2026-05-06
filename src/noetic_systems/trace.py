@@ -30,7 +30,11 @@ import numpy as np
 
 from noetic_systems.database import Database
 from noetic_systems.reconciliation.basins import build_basins, calculate_uncertainty
-from noetic_systems.reconciliation.diffusion import diffuse, seed_energy
+from noetic_systems.reconciliation.diffusion import (
+    constrain_graph_to_communities,
+    diffuse,
+    seed_energy,
+)
 from noetic_systems.reconciliation.graph import (
     build_evidence_graph,
 )
@@ -47,7 +51,7 @@ from noetic_systems.search.semantic import SearchResult
 
 DEFAULT_TRACE_PATH = Path("docs/trace.json")
 MULTI_BASIN_TRACE_CASE_ID = "multi_basin_release"
-DEFAULT_TRACE_EDGE_THRESHOLD = 0.82
+DEFAULT_TRACE_EDGE_THRESHOLD = 0.75
 
 
 def generate_trace(
@@ -59,8 +63,8 @@ def generate_trace(
     blind: bool = True,
     max_points: int = 500,
     candidate_limit: int = 50,
-    result_limit: int = 30,
-    diffusion_steps: int = 10,
+    result_limit: int = 36,
+    diffusion_steps: int = 4,
     damping: float = 0.85,
     edge_threshold: float = DEFAULT_TRACE_EDGE_THRESHOLD,
 ) -> dict[str, Any]:
@@ -104,9 +108,10 @@ def generate_trace(
         communities = detect_communities(graph)
 
         energy = seed_energy(graph_candidates)
+        basin_graph = constrain_graph_to_communities(graph, communities)
         energy_steps = [dict(energy)]
         for _ in range(diffusion_steps):
-            energy = diffuse(energy, graph, damping)
+            energy = diffuse(energy, basin_graph, damping)
             energy_steps.append(dict(energy))
 
         basins = build_basins(communities, energy, graph)
@@ -261,48 +266,63 @@ def multi_basin_trace_data() -> dict[str, Any]:
     The hard benchmark is optimized for evaluation, not always for visual
     explanation. Some benchmark queries produce one coherent evidence region,
     which is correct but visually unhelpful when teaching basin formation. This
-    trace corpus stays inside one payments domain, then creates two internal
-    evidence regions around settlement readiness and fraud readiness. The goal
-    is a teaching example where basins emerge inside a shared field instead of
-    looking like unrelated topic islands.
+    trace corpus stays inside one Formula 1 race debrief, then creates internal
+    evidence regions around tyres, power unit, aero, and pit-wall strategy. The
+    goal is a teaching example where basins emerge inside one shared field and a
+    multi-hop explanation can be inspected without domain jargon getting in the
+    way.
 
     Returns:
         Benchmark-shaped payload consumed by `generate_trace`.
     """
     topics = {
-        "settlement": [
-            "ledger reconciliation backlog",
-            "ACH posting delay",
-            "processor timeout retry",
-            "merchant payout queue",
-            "reserve balance mismatch",
-            "settlement file validation",
-            "clearing window exception",
-            "reversal posting defect",
-            "batch cutoff pressure",
-            "bank response latency",
-            "funding hold review",
-            "settlement rollback runbook",
-            "duplicate payout exposure",
-            "payment rail degradation",
-            "nightly close failure",
+        "tyres": [
+            "front-left graining after the safety car restart",
+            "medium tyre warmup failure in traffic",
+            "rear tyre surface overheating through sector two",
+            "long-stint lap time drop from thermal degradation",
+            "undercut window missed because the tyres were not ready",
+            "driver reported no traction on corner exit",
+            "high minimum pressures hurt the tyre contact patch",
+            "dirty air increased tyre sliding behind a rival",
+            "late stop left the car on used hard tyres",
+            "tyre blanket temperature was below target",
         ],
-        "fraud": [
-            "fraud review queue growth",
-            "manual approval backlog",
-            "chargeback signal spike",
-            "account takeover alerts",
-            "velocity rule false positives",
-            "risk model drift",
-            "dispute intake surge",
-            "merchant monitoring exception",
-            "suspicious refund pattern",
-            "identity verification delay",
-            "fraud analyst capacity",
-            "case escalation SLA",
-            "risk threshold override",
-            "blocked transaction review",
-            "fraud release gate",
+        "power_unit": [
+            "battery deployment clipped on the main straight",
+            "engine harvesting derated after high temperatures",
+            "ERS state of charge fell during defence",
+            "turbo temperature warning forced conservative mode",
+            "fuel saving target reduced full-throttle time",
+            "MGU-K recovery map was too aggressive",
+            "cooling lift-and-coast cost straight-line speed",
+            "power-unit vibration sensor triggered an alert",
+            "engine mode locked after the restart",
+            "overtake button was unavailable after lap thirty",
+        ],
+        "aero": [
+            "rear wing angle cost top speed",
+            "floor damage reduced rear downforce",
+            "front wing balance caused understeer",
+            "ride height was too high after the parc ferme change",
+            "porpoising forced a conservative setup",
+            "drag level was too high for the DRS train",
+            "diffuser strake damage followed a kerb strike",
+            "beam-wing choice hurt straight-line efficiency",
+            "crosswind made the car unstable in high-speed corners",
+            "aero balance shifted as fuel burned off",
+        ],
+        "pit_wall": [
+            "pit-stop release was delayed by a stuck wheel nut",
+            "safety-car call came one lap too late",
+            "double stack cost track position",
+            "traffic model underestimated the midfield queue",
+            "radio message confused the target lap",
+            "virtual-safety-car delta lost the pit-entry chance",
+            "strategy covered the wrong rival",
+            "pit crew reset delayed the front jack",
+            "team stayed out during the best stop window",
+            "undercut threat was missed on the timing screen",
         ],
     }
 
@@ -314,15 +334,15 @@ def multi_basin_trace_data() -> dict[str, Any]:
                 {
                     "id": doc_id,
                     "text": (
-                        "Payment release decision evidence operational risk "
-                        f"readiness. {topic} control area: {phrase}. "
-                        f"{topic} owners assess go/no-go launch risk for the "
-                        "payments platform."
+                        f"Formula 1 race debrief evidence: {phrase}. "
+                        "The note explains why the car lost race pace after "
+                        "the safety car and whether the team could recover a "
+                        "podium position."
                     ),
                     "metadata": {
                         "source": "demo",
-                        "domain": "payments",
-                        "title": f"{topic} release evidence {index}",
+                        "domain": "formula1",
+                        "title": f"{topic} race evidence {index}",
                         "case": MULTI_BASIN_TRACE_CASE_ID,
                     },
                 }
@@ -330,24 +350,23 @@ def multi_basin_trace_data() -> dict[str, Any]:
 
     for index in range(60):
         if index % 3 == 0:
-            context = "settlement checkpoint review and payment rail readiness"
+            context = "race debrief timeline summary"
         elif index % 3 == 1:
-            context = "fraud checkpoint review and risk operations readiness"
+            context = "lap chart and stint overview"
         else:
-            context = "shared release coordination and customer impact review"
+            context = "general radio and timing note"
         corpus.append(
             {
-                "id": f"background-{index}",
+                "id": f"context-{index}",
                 "text": (
-                    f"Payment release context note {index}: {context}. "
-                    "The note is related to the same payments launch field, "
-                    "but it is lower-specificity context rather than direct "
-                    "decision evidence."
+                    f"Formula 1 race context note {index}: {context}. "
+                    "This is lower-specificity background for the same Grand "
+                    "Prix review."
                 ),
                 "metadata": {
                     "source": "demo",
-                    "domain": "payments",
-                    "title": f"background note {index}",
+                    "domain": "formula1",
+                    "title": f"race context note {index}",
                 },
             }
         )
@@ -357,18 +376,18 @@ def multi_basin_trace_data() -> dict[str, Any]:
         "cases": {
             MULTI_BASIN_TRACE_CASE_ID: {
                 "query": (
-                    "payment release decision evidence operational risk "
-                    "readiness"
+                    "Formula 1 race debrief why did the car lose race pace "
+                    "after the safety car and miss the podium"
                 ),
                 "expected_stance": (
-                    "The trace should show two coherent payments-release "
-                    "evidence regions in one domain: settlement readiness and "
-                    "fraud readiness."
+                    "The trace should show several coherent race-debrief "
+                    "regions in one Formula 1 corpus, then choose the strongest "
+                    "region after diffusion and basin scoring."
                 ),
             }
         },
         "metadata": {
-            "name": "homogeneous multi-basin trace demo",
+            "name": "Formula 1 multi-basin trace demo",
             "document_count": len(corpus),
         },
     }

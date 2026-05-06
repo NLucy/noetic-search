@@ -6,12 +6,14 @@ lower-ranked candidates still enter the process. This preserves the useful work
 done by lexical and semantic retrieval without treating raw top-k rank as the
 final answer.
 
-After initialization, diffusion lets retrieval confidence move across evidence
-edges in discrete time steps. A node keeps some energy and sends the rest to
-related neighbors in proportion to edge weight. We use this because supporting
-evidence often appears across multiple related chunks: diffusion lets a cluster
-of mutually reinforcing candidates become visible before the final LLM prompt is
-constructed.
+After initialization, diffusion lets retrieval confidence move across selected
+evidence edges in discrete time steps. In the reconciliation pipeline, spectral
+detection runs first, then diffusion is constrained to edges whose endpoints are
+inside the same detected basin. A node keeps some energy and sends the rest to
+same-basin neighbors in proportion to edge weight. We use this because
+supporting evidence often appears across multiple related chunks: diffusion lets
+a cluster of mutually reinforcing candidates become visible before the final LLM
+prompt is constructed.
 
 Concretely, diffusion runs over discrete time steps. At time `t`, each node has
 some current energy. One update computes time `t + 1`: the node keeps a retained
@@ -41,6 +43,10 @@ Key variables:
         becoming final truth.
     `graph`: Weighted adjacency mapping. Edge weights control how movable energy
         is distributed to neighbors.
+    `communities`: Spectral basin assignment by document id.
+    `basin_graph`: Graph with cross-basin edges removed. Diffusion uses this
+        after basin detection so energy can settle inside fixed regions without
+        leaking between competing regions.
     `damping`: Fraction of each node's current energy allowed to move during one
         time step. A higher value trusts graph structure more; a lower value
         keeps more confidence local to the original candidate.
@@ -74,6 +80,31 @@ def seed_energy(results: list[SearchResult]) -> dict[str, float]:
         # Diffusion expects a comparable distribution regardless of candidate count.
         energy = {doc_id: value / total for doc_id, value in energy.items()}
     return energy
+
+
+def constrain_graph_to_communities(
+    graph: dict[str, dict[str, float]],
+    communities: dict[str, int],
+) -> dict[str, dict[str, float]]:
+    """Remove graph edges that cross spectral basin boundaries.
+
+    Args:
+        graph: Weighted adjacency mapping.
+        communities: Spectral community assignment by document id.
+
+    Returns:
+        Weighted adjacency mapping containing only same-community edges.
+    """
+    basin_graph: dict[str, dict[str, float]] = {}
+    for doc_id, neighbors in graph.items():
+        doc_community = communities.get(doc_id)
+        basin_graph[doc_id] = {
+            neighbor_id: weight
+            for neighbor_id, weight in neighbors.items()
+            if doc_community is not None
+            and communities.get(neighbor_id) == doc_community
+        }
+    return basin_graph
 
 
 def diffuse(

@@ -104,13 +104,13 @@ def main() -> None:
     trace.add_argument(
         "--result-limit",
         type=int,
-        default=30,
+        default=36,
         help="candidates admitted into the local graph",
     )
     trace.add_argument(
         "--diffusion-steps",
         type=int,
-        default=10,
+        default=4,
         help="diffusion time steps to capture",
     )
     trace.add_argument(

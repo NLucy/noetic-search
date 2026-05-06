@@ -115,8 +115,8 @@ evidence. Blind mode strips benchmark-only labels before indexing.
 
 ## Trace Viewer
 
-Generate the default browser trace. The default is a built-in homogeneous
-payments case designed to show multiple spectral basins clearly.
+Generate the default browser trace. The default is a built-in Formula 1 race
+debrief designed to show multiple spectral basins clearly.
 
 ```bash
 uv run noetic trace

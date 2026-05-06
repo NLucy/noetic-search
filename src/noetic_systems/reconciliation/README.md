@@ -51,15 +51,17 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
 
 4. `diffusion.py`
    Converts hybrid retrieval scores and ranks into the initial energy
-   distribution, then runs discrete time-step propagation over the fixed evidence
-   graph. Energy moves across weighted edges so support can travel through
-   related chunks.
+   distribution, removes cross-basin edges from the graph, then runs discrete
+   time-step propagation inside the fixed spectral basins. Energy moves across
+   same-basin weighted edges so support can travel through related chunks
+   without leaking into a competing region.
    Initialization preserves the first-stage retrieval opinion without making it
    final. High-ranked chunks start with more influence, but lower-ranked chunks
    remain eligible to gain support through the graph.
-   Each time step redistributes the current energy. A chunk can gain importance
-   because it is connected to other supported chunks, and an isolated high-rank
-   candidate can lose dominance because little support flows back to it.
+   Each time step redistributes the current energy inside each basin. A chunk can
+   gain importance because it is connected to other supported chunks in its
+   region, and an isolated high-rank candidate can lose dominance because little
+   support flows back to it.
    Diffusion does not find, move, or redraw basins; it measures how retrieval
    confidence settles on nodes inside the basins that spectral analysis already
    proposed.
