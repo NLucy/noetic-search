@@ -121,6 +121,7 @@
         <p class="eyebrow">5. Whole-Graph Diffusion</p>
         <h2>Let retrieval energy move across the full graph.</h2>
         <p>
+          This is a diagnostic step, not the scoring step.
           This diagnostic runs after basin boundaries are known, but before
           cross-basin edges are removed. It asks where the hybrid signal wants
           to move if every graph edge is available.
@@ -137,6 +138,7 @@
         <p class="eyebrow">6. Basin-Constrained Diffusion</p>
         <h2>Redistribute energy inside fixed basins.</h2>
         <p>
+          This is the scoring diffusion path.
           Point size follows absolute seeded energy at the captured diffusion
           time step. Energy starts from hybrid rank and score, then moves
           through same-basin graph relationships.
@@ -151,9 +153,9 @@
         <p>
           This step tests how the hybrid signal behaves after it meets the graph.
           A high-rank chunk that is isolated stays thin. A lower-rank chunk can
-          become more important when neighboring chunks also support it. That is
-          the practical value of diffusion: it separates isolated matches from
-          graph-supported evidence.
+          become more important when neighboring chunks also support it. Unlike
+          whole-graph diffusion, this version keeps the basin competition fixed
+          so final scoring does not reward one basin for draining another.
         </p>
       </article>
       <article class="trace-step" data-step="basins">
@@ -1025,8 +1027,9 @@
 
       scorePanel.classList.add("active");
       scorePanel.innerHTML = `
-        <h3>Whole-graph diffusion diagnostic</h3>
-        <p>This view lets energy cross every graph edge. Positive flow delta means a basin absorbed energy from the surrounding field; negative delta means it leaked energy into neighbors. This does not choose the winner by itself.</p>
+        <h3>Diagnostic only: whole-graph diffusion</h3>
+        <p><strong>This panel does not choose the winner.</strong> It lets energy cross every graph edge so we can measure attraction, leakage, and absorption. Positive flow delta means a basin absorbed energy from the surrounding field; negative delta means it leaked energy into neighbors.</p>
+        <p>The next diffusion step removes cross-basin edges. That basin-constrained distribution is the one used for scoring.</p>
         <div class="trace-score-grid">${flowCards}</div>
       `;
       return;
@@ -1075,6 +1078,7 @@
     scorePanel.innerHTML = `
       <h3>Why ${escapeHtml(winner.label)} wins</h3>
       <p>${formula}</p>
+      <p><strong>Scoring path:</strong> These values use basin-constrained diffusion, where cross-basin edges have been removed. Whole-graph flow delta is shown as context, not as the final scoring energy.</p>
       <p><strong>Hybrid check:</strong> ${seedCopy}</p>
       <p><strong>Reversal standard:</strong> ${reversalCopy}</p>
       <div class="trace-score-grid">${basinCards}</div>
