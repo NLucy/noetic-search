@@ -11,6 +11,38 @@ strongest basin.
 It is not a replacement for vector search, BM25, reranking, or LLM reasoning. It
 operates between candidate retrieval and prompt construction.
 
+## Quickstart
+
+Prerequisite: install `uv` if it is not already available.
+
+Clone the repository, then run the package directly from the repo root:
+
+```bash
+git clone git@github.com:NLucy/noetic-search.git
+cd noetic-search
+uv run noetic demo
+```
+
+Run the test suite and strict documentation build:
+
+```bash
+uv run python -m unittest discover -s tests
+uv run mkdocs build --strict
+```
+
+Generate the browser trace and serve the docs:
+
+```bash
+uv run noetic trace
+uv run mkdocs serve
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/
+```
+
 ## Algorithm
 
 ```text
