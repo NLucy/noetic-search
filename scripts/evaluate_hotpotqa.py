@@ -4,8 +4,8 @@
 This CLI downloads a HotpotQA split through Hugging Face `datasets`, converts
 each context paragraph into a retrieval document, and scores whether the known
 supporting paragraphs appear in the returned rankings. It reports the same
-precision, recall, hit rate, and MRR metrics used by the synthetic hard
-benchmark so the two runs are comparable.
+precision, recall, hit rate, and MRR metrics used by the benchmark suite so
+the runs are comparable.
 """
 
 from __future__ import annotations

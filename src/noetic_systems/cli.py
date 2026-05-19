@@ -93,7 +93,7 @@ def main() -> None:
         "--data-path",
         type=Path,
         default=DEFAULT_TRACE_DATA_PATH,
-        help="hard benchmark JSON path",
+        help="trace dataset JSON path",
     )
     trace.add_argument(
         "--output",
