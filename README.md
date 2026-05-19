@@ -66,25 +66,15 @@ linked_score =
 graph edge to a preserved hybrid anchor. `graph_support` is normalized weighted
 degree inside the local candidate graph.
 
-Focused ablations show the main signal:
+## Result
 
 ![Hybrid versus Noetic auto support recall](docs/assets/benchmark_summary.svg)
 
-```text
-variant                 mean recall across @5/@10
-hybrid                  0.738
-linked_static           0.777
-linked_auto             0.783
-anchors_only            0.738
-no_anchor_affinity      0.756
-anchor_affinity_only    0.780
-support_only            0.501
-semantic_only           0.743
-lexical_only            0.742
-```
+On the benchmark summary, Noetic improved mean recall from `0.738` to `0.783`
+across `@5/@10`: a 4.5 percentage-point absolute gain, or a 6.1% relative
+improvement over hybrid.
 
-Anchors alone reproduce hybrid. Generic graph support alone performs poorly.
-The lift comes from anchor-linked promotion.
+The detailed ablation study is documented in the MkDocs site.
 
 ## Auto Calibration
 
@@ -154,3 +144,18 @@ uv run mkdocs serve
 - Spectral partitioning and diffusion remain available for diagnostics and trace
   visualization.
 - Compare latency against `hybrid@candidate_limit`, not `hybrid@final_k`.
+
+## Clinical Direction
+
+The long-term target domain is healthcare evidence retrieval: finding compact,
+well-supported context for high-stakes review workflows where missing a key
+chunk or surfacing a misleading decoy can matter.
+
+The included clinical evidence dataset is synthetic by design. It models
+medication-safety evidence chains with critical support chunks, plausible
+decoys, background notes, and unrelated noise. Its purpose is to stress-test
+retrieval behavior before any real clinical corpus is involved.
+
+This repository is not a diagnostic system. The current claim is narrower:
+Noetic Search studies whether graph-based reconciliation can improve the
+evidence set handed to downstream reviewers or LLMs.

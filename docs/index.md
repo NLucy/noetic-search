@@ -84,6 +84,44 @@
     <img src="assets/benchmark_summary.svg" alt="Bar chart comparing Hybrid and Noetic auto recall on HotpotQA, 2WikiMultiHopQA, and MuSiQue.">
   </section>
 
+  <section class="panel">
+    <p class="eyebrow">Ablation key</p>
+    <h2>The ablation separates the mechanism from the surrounding graph.</h2>
+    <p>
+      The focused ablation compares mean support recall across <code>@5</code>
+      and <code>@10</code>. Raw hybrid scores <code>0.738</code>.
+      Auto-calibrated linked Noetic scores <code>0.783</code>, a 4.5
+      percentage-point absolute gain and a 6.1% relative improvement over
+      hybrid.
+    </p>
+    <pre>variant                 mean recall across @5/@10
+hybrid                  0.738
+linked_static           0.777
+linked_auto             0.783
+anchors_only            0.738
+no_anchor_affinity      0.756
+anchor_affinity_only    0.780
+support_only            0.501
+semantic_only           0.743
+lexical_only            0.742</pre>
+    <div class="symbols">
+      <div><code>hybrid</code><span>Baseline hybrid ranking, with no Noetic reconciliation.</span></div>
+      <div><code>linked_static</code><span>Anchor-linked graph ranking with fixed default graph weights.</span></div>
+      <div><code>linked_auto</code><span>Anchor-linked graph ranking with corpus-calibrated graph weights.</span></div>
+      <div><code>anchors_only</code><span>Preserved hybrid anchors only; tests whether the result is merely the original top hybrid hits.</span></div>
+      <div><code>no_anchor_affinity</code><span>Graph ranking without the direct anchor-affinity term; tests whether generic graph structure is enough.</span></div>
+      <div><code>anchor_affinity_only</code><span>Candidates ranked only by their strongest graph edge to a preserved hybrid anchor.</span></div>
+      <div><code>support_only</code><span>Candidates ranked only by weighted graph degree; tests broad graph centrality by itself.</span></div>
+      <div><code>semantic_only</code><span>Graph edges built from embedding similarity only.</span></div>
+      <div><code>lexical_only</code><span>Graph edges built from lexical salience overlap only.</span></div>
+    </div>
+    <p>
+      The pattern is the important part. Anchors alone reproduce hybrid.
+      Support-only graph ranking performs poorly. The lift comes from promoting
+      candidates connected to strong hybrid anchors.
+    </p>
+  </section>
+
   <section class="grid two">
     <article>
       <h2>Agreement</h2>
