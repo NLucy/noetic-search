@@ -18,45 +18,59 @@
       density, largest connected component ratio, Freeman degree centralization,
       duplicate pressure, lexical fit, resonance health, and semantic-only
       bridge risk. The result is one frozen graph formula used at query time.
+      Static fallback constants exist so the system can run cold, but the
+      benchmarked production path uses corpus-native <code>auto</code> weights.
     </p>
     <pre>corpus text + embeddings
   -> pairwise semantic and lexical profiles
   -> graph-health grid
-  -> frozen GraphWeights</pre>
+  -> frozen GraphWeights
+  -> query-time graph construction</pre>
+    <div class="symbols">
+      <div><code>corpus text</code><span>The raw chunks that have been indexed. Calibration reads the same text that retrieval will later search.</span></div>
+      <div><code>embeddings</code><span>Vector representations of those chunks. They provide the semantic side of each possible edge.</span></div>
+      <div><code>pairwise semantic profile</code><span>The distribution of embedding similarities between sampled chunk pairs.</span></div>
+      <div><code>pairwise lexical profile</code><span>The distribution of salient term and phrase overlap between sampled chunk pairs.</span></div>
+      <div><code>graph-health grid</code><span>The set of candidate edge formulas tested against the sampled corpus structure.</span></div>
+      <div><code>GraphWeights</code><span>The frozen edge formula selected by calibration: thresholds and weights for semantic, lexical, cross-reference, and duplicate signals.</span></div>
+      <div><code>GraphHealthConfig</code><span>The scoring configuration that says how much to value density, connectivity, hub control, duplicate control, lexical fit, resonance, and bridge safety.</span></div>
+      <div><code>static fallback constants</code><span>Fixed default edge settings used when calibration is not run.</span></div>
+    </div>
     <p>
-      Calibration does not run query diffusion to invent weights. It builds
-      candidate edge formulas from corpus-level pair measurements, scores those
-      formulas, and freezes the best one. The health-score ranges and mixture
-      weights are held in <code>GraphHealthConfig</code>. The current values are
-      fixed, interpretable priors. Future research can select that config on
+      Calibration builds candidate edge formulas from corpus-level pair
+      measurements, scores those formulas, and freezes the best one. The
+      health-score ranges and mixture weights are held in
+      <code>GraphHealthConfig</code>. The current values are fixed,
+      interpretable priors. Future research can select that config on
       development benchmarks and then freeze it for held-out evaluation.
-      Diffusion comes later, after a query has produced hybrid candidates and
-      seed energy.
     </p>
+    <div class="symbols">
+      <div><code>density</code><span>The fraction of possible chunk-pair edges that actually exist. Too sparse cannot expand support; too dense becomes indiscriminate.</span></div>
+      <div><code>largest_component_ratio</code><span>The fraction of nodes inside the largest connected component. It measures whether the graph has a usable main evidence field.</span></div>
+      <div><code>Freeman degree centralization</code><span>A standard graph measure of hub concentration. High centralization means a few generic chunks dominate many connections.</span></div>
+      <div><code>duplicate_pressure</code><span>How often near-duplicate chunks would be connected. It guards against repeated evidence looking like independent support.</span></div>
+      <div><code>lexical_fit</code><span>How well the lexical threshold matches the corpus's observed salience distribution.</span></div>
+      <div><code>resonance_health</code><span>How often semantic similarity and lexical salience agree on the same edge. This is the preferred evidence relationship.</span></div>
+      <div><code>semantic_only_bridge_risk</code><span>How often semantic similarity creates an edge without lexical grounding. This can indicate useful paraphrase, but also weak off-chain bridges.</span></div>
+    </div>
   </section>
 
   <section class="panel">
-    <p class="eyebrow">Production default</p>
-    <h2>Use auto calibration when the corpus is available.</h2>
+    <p class="eyebrow">Query time</p>
+    <h2>The frozen graph formula is applied to retrieved candidates.</h2>
     <p>
-      The implementation has static fallback constants so the system can run
-      cold. Focused ablations show those defaults already improve over hybrid.
-      The 300-case headline chart reports linked-evidence ranking with frozen
-      graph weights chosen by corpus-native <code>auto</code> calibration.
+      After calibration, query-time retrieval is simple. Hybrid search returns
+      candidates. Noetic admits the local working field, builds edges with the
+      frozen <code>GraphWeights</code>, preserves the strongest hybrid anchors,
+      and applies linked ranking.
     </p>
-    <pre>fallback constants:
-semantic_threshold = 0.50
-lexical_threshold = 0.08
-cross_reference_weight = 0.55
-near_duplicate_threshold = 0.86
-
-benchmarked production:
-auto-calibrated GraphWeights
-  -> linked-evidence ranking</pre>
+    <pre>query
+  -> hybrid candidates
+  -> graph with frozen GraphWeights
+  -> linked-evidence ranking
+  -> compact chunks</pre>
     <p>
-      Linked ranking keeps the same production shape: preserve the strongest
-      hybrid anchors, then promote graph-connected support using query score,
-      anchor affinity, and local graph support.
+      This page describes that production flow only.
     </p>
   </section>
 
@@ -86,7 +100,7 @@ auto-calibrated GraphWeights
     <h2>The selected graph should be connected, but not indiscriminate.</h2>
     <p>
       <code>auto</code> chooses the formula whose graph has enough structure for
-      support to travel while controlling dense collapse, generic hubs,
+      support expansion while controlling dense collapse, generic hubs,
       duplicate pressure, and semantic-only bridge risk. The graph measurements
       are label-free at corpus-calibration time. If a project wants a stronger
       empirical footing, it can train the global <code>GraphHealthConfig</code>
@@ -103,7 +117,7 @@ auto-calibrated GraphWeights
 + resonance_score
 + bridge_safety_score</pre>
     <div class="symbols">
-      <div><code>density_score</code><span>Rewards enough graph edges for support to travel while penalizing dense collapse.</span></div>
+      <div><code>density_score</code><span>Rewards enough graph edges for support expansion while penalizing dense collapse.</span></div>
       <div><code>connectivity_score</code><span>Rewards a large usable connected component without requiring full graph collapse.</span></div>
       <div><code>centralization_score</code><span>Rewards low Freeman degree centralization so generic chunks do not dominate the field.</span></div>
       <div><code>duplicate_score</code><span>Rewards formulas that keep near-duplicate pressure limited.</span></div>
@@ -132,11 +146,9 @@ hybrid_search(query, k=50)
   -> linked ranking
   -> top 5 chunks</pre>
     <p>
-      Production also skips the diagnostic stack. It does not compute spectral
-      partitions, eigendecomposition, diffusion, basin scoring, uncertainty, or
-      document specificity. Those are available behind diagnostics and research
-      commands, but linked-evidence retrieval only needs query score, graph
-      support, and strongest edge to the preserved anchors.
+      Linked-evidence retrieval only needs query score, graph support, and the
+      strongest edge to the preserved anchors. The production selector does not
+      need the research diagnostics described elsewhere in the docs.
     </p>
     <div class="symbols">
       <div><code>candidate_limit</code><span>Broad first-stage retrieval depth, usually 50.</span></div>
@@ -254,41 +266,37 @@ top_5 = anchors + highest linked_score support chunks</pre>
           graph ranking fails, and anchor-linked promotion is where the recall
           lift appears.
         </p>
+        <img src="../assets/linked_ranking_illustration.svg" alt="Hybrid candidates become a graph; preserved anchors pull lower-ranked connected support chunks into the final compact return.">
       </div>
     </article>
 
     <article class="math-item">
       <div class="math-tag">4. Result</div>
       <div class="math-section">
-        <h2>Expose chunks or the inspection field.</h2>
+        <h2>Return compact chunks.</h2>
         <div class="math-block">
           <h3>Intuition</h3>
           <p>
             The result step turns graph reconciliation into caller-facing
-            surfaces. The production surface is compact chunks. Diagnostics are
-            explicit.
+            chunks. The production surface is intentionally small: a compact
+            set of text and metadata for the caller or LLM.
           </p>
         </div>
         <div class="math-block">
           <h3>Mechanics</h3>
           <p>
-            Applications normally call <code>chunks()</code>. When diagnostics
-            are requested, they can also inspect basin payloads and the full
-            evidence field.
+            Applications call <code>chunks()</code>. The returned list follows
+            the active production ranking policy and is already limited to the
+            requested size.
           </p>
         </div>
-        <pre>result.chunks(database, k=5)
-result.strongest_basin(database)  # diagnostics
-result.evidence_field()           # diagnostics</pre>
+        <pre>result.chunks(database, k=5)</pre>
         <div class="symbols">
           <div><code>result</code><span>The reconciliation result object returned by the pipeline.</span></div>
           <div><code>chunks</code><span>Method returning compact LLM-ready chunks from the active return policy.</span></div>
           <div><code>database</code><span>The document store used to materialize chunk text and metadata.</span></div>
           <div><code>k</code><span>Maximum number of chunks to return.</span></div>
           <div><code>5</code><span>The default compact return size used in the examples.</span></div>
-          <div><code>strongest_basin</code><span>Method returning the strongest diagnostic basin when diagnostics are included.</span></div>
-          <div><code>evidence_field</code><span>Method returning the inspection surface with linked return, optional basins, support edges, and uncertainty.</span></div>
-          <div><code>diagnostics_included</code><span>Boolean flag indicating whether spectral, diffusion, and basin diagnostics were computed.</span></div>
         </div>
       </div>
     </article>
