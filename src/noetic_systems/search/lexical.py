@@ -1,4 +1,21 @@
-"""BM25 lexical search implementation."""
+"""BM25 lexical first-stage retrieval.
+
+BM25 supplies the lexical half of hybrid retrieval. It rewards query terms that
+appear in a document, discounts terms that appear everywhere, and normalizes for
+document length. This gives the pipeline an exact-token channel alongside vector
+similarity.
+
+The implementation is intentionally local and dependency-light because it is
+used for benchmarks and demos where a full text-search service would obscure
+the retrieval mechanics being tested.
+
+Key variables:
+    `k1`: Term-frequency saturation parameter. Larger values allow repeated
+        terms to keep adding score for longer.
+    `b`: Document-length normalization parameter.
+    `avg_doc_length`: Mean indexed document length used for normalization.
+    `term_doc_freqs`: Number of documents containing each term, used for IDF.
+"""
 
 from __future__ import annotations
 
@@ -72,6 +89,9 @@ class LexicalSearch:
 
     def build_index(self) -> BM25Index:
         """Build a BM25 index from database documents.
+
+        Args:
+            None.
 
         Returns:
             Index containing tokenized documents and corpus statistics.

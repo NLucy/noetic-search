@@ -1,23 +1,23 @@
 """Post-retrieval evidence resolution for Noetic Search.
 
 This package turns a broad hybrid-retrieval candidate set into a smaller,
-coherent evidence region. It builds a query-conditioned graph, uses spectral
-partitioning to detect basins, diffuses initial retrieval confidence across the
-graph, scores those basins, and exposes either compact chunks or an inspection
-payload.
+graph-linked evidence set. The benchmarked production path builds a
+query-conditioned graph, preserves strong hybrid anchors, promotes connected
+support chunks, and exposes compact linked chunks. Spectral partitioning,
+diffusion, and basin scoring remain available as explicit diagnostics and
+research tools.
 
 The package is intentionally organized by methodology. Graph construction
-defines the local structure, spectral partitioning finds coherent regions,
-diffusion initializes retrieval energy and measures how it settles inside those
-regions, basin scoring chooses the strongest region and reports structural risk,
-ranking selects representative chunks from the winner, and result formatting
-presents the outcome to an LLM or caller. This keeps the search idea
-inspectable: every stage has a specific mathematical role and a concrete
-artifact that can be tested.
+defines the local structure, ranking preserves strong hybrid anchors while
+promoting graph-linked support, and result formatting presents the outcome to an
+LLM or caller. The research modules add spectral partitioning, diffusion, basin
+scoring, and structural uncertainty when inspection is requested. This keeps the
+search idea inspectable: every stage has a specific mathematical role and a
+concrete artifact that can be tested.
 
 Import concrete modules directly, for example
 `noetic_systems.reconciliation.engine.Reconciler` or
-`noetic_systems.reconciliation.diffusion.diffuse`. The package initializer does
-not re-export implementation symbols because the module names are part of the
-teaching surface.
+`noetic_systems.reconciliation.ranking.rank_linked_evidence`. The package
+initializer does not re-export implementation symbols because the module names
+are part of the teaching surface.
 """

@@ -1,5 +1,5 @@
 [project]
-name = "noetic-systems"
+name = "noetic-search"
 version = "0.1.0"
 description = "Post-retrieval graph reconciliation for hybrid search."
 readme = "README.md"
@@ -13,6 +13,9 @@ dependencies = [
 [project.optional-dependencies]
 llm = [
     "openai>=1.68.0",
+]
+eval = [
+    "datasets>=3.0.0",
 ]
 
 [project.scripts]

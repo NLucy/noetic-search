@@ -1,17 +1,19 @@
 """Orchestration engine for Noetic reconciliation.
 
-The engine owns stateful dependencies, retrieves a broad hybrid candidate set,
-and then calls the functional graph, spectral, diffusion, basin, and result
-modules in order. We keep orchestration separate from the math so the algorithm
-can be inspected step by step and each methodology can be tested without a large
-stateful class.
+The engine owns stateful dependencies and runs the production reconciliation
+path: retrieve broad hybrid candidates, build a local evidence graph, and rank a
+compact linked-evidence return set. Spectral partitioning, diffusion, and basin
+scoring remain available as explicit diagnostics and as the alternate
+`return_policy="basin"` path, but they are no longer part of the default
+production return.
 
-The central method is `Reconciler.reconcile()`. It retrieves more candidates
-than it plans to return, selects a graph-sized working set, builds the local
-evidence graph, detects communities, initializes and diffuses energy, scores
-basins, and returns a `ReconciliationResult`. Each intermediate structure is
-ordinary Python data: lists of search results, adjacency dictionaries, community
-assignments, energy dictionaries, basin records, and result payloads.
+The central method is `Reconciler.reconcile()`. In default linked mode, it
+retrieves more candidates than it plans to return, selects a graph-sized working
+set, builds the local evidence graph, and ranks linked support chunks. When
+diagnostics are requested, it also computes spectral basins plus diffusion
+metrics for inspection. Each intermediate structure is ordinary Python data:
+lists of search results, adjacency dictionaries, energy dictionaries, basin
+records, and result payloads.
 
 Keeping this file thin is important. If the engine starts accumulating scoring
 rules or matrix logic, the method becomes hard to audit. The engine should answer
@@ -24,14 +26,21 @@ Key variables:
     `result_limit`: Number of retrieved candidates admitted into the local graph.
         This bounds the query-time graph computation.
     `edge_threshold`: Minimum embedding similarity used by graph construction.
-    `diffusion_steps`: Number of diffusion time steps run after energy
-        initialization.
+    `include_diagnostics`: Whether to run spectral partitioning, diffusion, and
+        basin scoring for inspection.
+    `diffusion_steps`: Number of diagnostic diffusion time steps run after
+        energy initialization.
     `damping`: Fraction of node energy allowed to move across graph edges during
         each diffusion step.
-    `graph_candidates`: The actual working field used for graph construction,
-        spectral detection, diffusion, basin scoring, and ranking.
+    `graph_candidates`: The actual working field used for graph construction and
+        linked-evidence ranking. Diagnostic mode also uses it for spectral
+        detection, diffusion, and basin scoring.
     `communities`: Spectral basin assignment for each graph candidate.
     `basins`: Scored evidence regions sorted by descending basin score.
+    `return_policy`: Compact return strategy. `linked` preserves early hybrid
+        anchors and promotes graph-connected evidence from the candidate field.
+        `basin` returns representatives from the strongest diffused basin and
+        automatically enables diagnostics.
 """
 
 from __future__ import annotations
@@ -47,6 +56,7 @@ from noetic_systems.reconciliation.diffusion import (
 )
 from noetic_systems.reconciliation.graph import (
     EMBEDDING_EDGE_THRESHOLD,
+    GraphWeights,
     build_evidence_graph,
 )
 from noetic_systems.reconciliation.metrics import (
@@ -55,15 +65,18 @@ from noetic_systems.reconciliation.metrics import (
     document_specificity,
     document_support,
 )
-from noetic_systems.reconciliation.models import Basin
-from noetic_systems.reconciliation.ranking import rank_basin_documents
+from noetic_systems.reconciliation.models import Basin, EvidenceEdge
+from noetic_systems.reconciliation.ranking import (
+    rank_basin_documents,
+    rank_linked_evidence,
+)
 from noetic_systems.reconciliation.result import ReconciliationResult
 from noetic_systems.reconciliation.spectral import detect_communities
 from noetic_systems.search.hybrid import HybridSearch
 
 
 class Reconciler:
-    """Resolve hybrid candidates into evidence basins.
+    """Resolve hybrid candidates into compact linked evidence.
 
     The class owns database and hybrid-search state. The reconciliation steps
     themselves live in functional modules so the algorithm is easy to inspect and
@@ -74,18 +87,21 @@ class Reconciler:
         self,
         database: Database,
         hybrid_search: HybridSearch | None = None,
+        graph_weights: GraphWeights | None = None,
     ) -> None:
         """Initialize the reconciliation engine.
 
         Args:
             database: Database containing candidate documents and embeddings.
             hybrid_search: Optional preconfigured hybrid search instance.
+            graph_weights: Optional corpus-level graph calibration.
 
         Returns:
             None.
         """
         self.database = database
         self.hybrid = hybrid_search or HybridSearch(database)
+        self.graph_weights = graph_weights
 
     def hybrid_baseline(
         self,
@@ -113,6 +129,8 @@ class Reconciler:
         diffusion_steps: int = 10,
         damping: float = 0.85,
         edge_threshold: float = EMBEDDING_EDGE_THRESHOLD,
+        return_policy: str = "linked",
+        include_diagnostics: bool = False,
     ) -> ReconciliationResult:
         """Run graph-based reconciliation over hybrid candidates.
 
@@ -123,10 +141,17 @@ class Reconciler:
             diffusion_steps: Number of fixed diffusion iterations.
             damping: Fraction of energy allowed to move across graph edges.
             edge_threshold: Minimum embedding similarity for a semantic edge.
+            return_policy: Compact return strategy: `linked` or `basin`.
+            include_diagnostics: Whether to run spectral, diffusion, and basin
+                scoring even when the linked return policy is used.
 
         Returns:
-            Reconciliation result containing basins, chunk scores, and graph metrics.
+            Reconciliation result containing compact return ids and optional
+            basin diagnostics.
         """
+        if return_policy not in {"linked", "basin"}:
+            raise ValueError("return_policy must be 'linked' or 'basin'")
+
         candidates = self.hybrid.search(query, limit=candidate_limit)
         if not candidates:
             return empty_result(query)
@@ -135,9 +160,37 @@ class Reconciler:
         # recall, then the local graph gets a fixed-size working field.
         graph_candidates = candidates[:result_limit]
         doc_index = {result.id: result for result in graph_candidates}
-        graph, edges = build_evidence_graph(self.database, doc_index, edge_threshold)
+        graph, edges = build_evidence_graph(
+            self.database,
+            doc_index,
+            edge_threshold,
+            weights=self.graph_weights,
+        )
+        return_documents = tuple(rank_linked_evidence(graph_candidates, graph))
+        query_score = {result.id: result.score for result in graph_candidates}
+        support = document_support(graph)
+
+        if return_policy == "linked" and not include_diagnostics:
+            return linked_result(
+                query,
+                return_documents,
+                {},
+                query_score,
+                support,
+                edges,
+            )
+
         communities = detect_communities(graph)
         if not communities:
+            if return_policy == "linked":
+                return linked_result(
+                    query,
+                    return_documents,
+                    {},
+                    query_score,
+                    support,
+                    edges,
+                )
             return empty_result(query)
 
         # Initialize from retrieval rank, then let confidence move inside the
@@ -150,19 +203,26 @@ class Reconciler:
 
         basins = build_basins(communities, energy, graph)
         if not basins:
+            if return_policy == "linked":
+                return linked_result(
+                    query,
+                    return_documents,
+                    {},
+                    query_score,
+                    support,
+                    edges,
+                )
             return empty_result(query)
 
         # The winner is chosen after region-level scoring, not raw retrieval rank.
+        # Under the default linked return policy, this remains an inspection and
+        # alternate-return signal rather than the final chunk selector.
         basins = sorted(basins, key=lambda basin: basin.score, reverse=True)
         modularity = calculate_modularity(graph, communities)
         dispersion = calculate_dispersion(energy)
         uncertainty = calculate_uncertainty(basins, modularity, dispersion)
-
-        # Only the winning basin needs final representative chunk ordering; the
-        # other basins remain available as competitors in the inspection field.
         specificity = document_specificity(graph_candidates)
-        query_score = {result.id: result.score for result in graph_candidates}
-        support = document_support(graph)
+
         ranked_winner_documents = rank_basin_documents(
             list(basins[0].documents),
             energy,
@@ -170,11 +230,16 @@ class Reconciler:
         )
         winner = replace(basins[0], documents=tuple(ranked_winner_documents))
         basins = [winner, *basins[1:]]
+        if return_policy == "basin":
+            return_documents = winner.documents
 
         return ReconciliationResult(
             query=query,
             winner=winner,
             basins=tuple(basins),
+            diagnostics_included=True,
+            return_policy=return_policy,
+            return_documents=return_documents,
             uncertainty=uncertainty,
             dispersion=dispersion,
             modularity=modularity,
@@ -189,7 +254,62 @@ class Reconciler:
             },
             document_support={doc_id: float(value) for doc_id, value in support.items()},
             edges=tuple(edges),
-        )
+    )
+
+
+def linked_result(
+    query: str,
+    return_documents: tuple[str, ...],
+    specificity: dict[str, float],
+    query_score: dict[str, float],
+    support: dict[str, float],
+    edges: list[EvidenceEdge],
+) -> ReconciliationResult:
+    """Return a production linked-evidence result without diagnostics.
+
+    Args:
+        query: Query text.
+        return_documents: Ranked compact return ids.
+        specificity: Specificity score by document id.
+        query_score: Hybrid query score by document id.
+        support: Weighted graph support by document id.
+        edges: Evidence edges from graph construction.
+
+    Returns:
+        Reconciliation result for the benchmarked production path.
+    """
+    winner = Basin(
+        id=0,
+        label="linked-evidence",
+        score=0.0,
+        energy=0.0,
+        documents=return_documents,
+        cohesion=0.0,
+        support=len(return_documents),
+        duplicate_penalty=0.0,
+    )
+    return ReconciliationResult(
+        query=query,
+        winner=winner,
+        basins=(),
+        diagnostics_included=False,
+        return_policy="linked",
+        return_documents=return_documents,
+        uncertainty=0.0,
+        dispersion=0.0,
+        modularity=0.0,
+        document_energy={},
+        document_specificity={
+            doc_id: float(value)
+            for doc_id, value in specificity.items()
+        },
+        document_query_score={
+            doc_id: float(value)
+            for doc_id, value in query_score.items()
+        },
+        document_support={doc_id: float(value) for doc_id, value in support.items()},
+        edges=tuple(edges),
+    )
 
 
 def empty_result(query: str) -> ReconciliationResult:
@@ -205,6 +325,9 @@ def empty_result(query: str) -> ReconciliationResult:
         query=query,
         winner=Basin(0, "empty", 0.0, 0.0, (), 0.0, 0, 0.0),
         basins=(),
+        diagnostics_included=False,
+        return_policy="linked",
+        return_documents=(),
         uncertainty=1.0,
         dispersion=1.0,
         modularity=0.0,

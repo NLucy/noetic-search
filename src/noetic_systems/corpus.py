@@ -8,6 +8,9 @@ from typing import Any
 def demo_corpus() -> list[dict[str, Any]]:
     """Return the built-in demonstration corpus.
 
+    Args:
+        None.
+
     Returns:
         Documents with `id`, `text`, and `metadata` fields suitable for loading into
         the local database wrapper.

@@ -1,26 +1,30 @@
 """Public result surfaces for reconciled evidence fields.
 
 The result object is the handoff point between search and downstream callers. It
-can return only the winning basin's chunks for compact LLM context, or expose the
-full evidence field with competing basins, support edges, and uncertainty. We
+can return linked evidence chunks for compact LLM context, or expose the full
+evidence field with competing basins, support edges, and uncertainty. We
 keep this logic separate from reconciliation so the search computation and
 external payload shapes do not become tangled.
 
 There are three useful public surfaces. `document_ids()` returns the compact
-ranked ids from the winning basin. `chunks()` materializes those ids into
+ranked ids selected by the return policy. `chunks()` materializes those ids into
 LLM-ready text, metadata, and scores. `evidence_field()` exposes the inspection
-view: winning basin, competing basins, support edges, metrics, and uncertainty
-reasons. The same computed result can therefore serve a production prompt, a
-debugging interface, or an evaluation harness.
+view: linked return ids, optional basin diagnostics, support edges, metrics, and
+uncertainty reasons. The same computed result can therefore serve a production
+prompt, a debugging interface, or an evaluation harness.
 
 The result also preserves per-document scores. Energy, specificity, query score,
 and graph support remain available after reconciliation so final chunks can be
 audited without rerunning the pipeline.
 
 Key variables:
-    `winner`: The selected basin after scoring and representative ranking.
-    `basins`: All basins, ordered by score. Competitors remain available for
-        inspection.
+    `winner`: The selected basin after scoring, or the linked-evidence return
+        surface when diagnostics are not included.
+    `basins`: Diagnostic basins ordered by score. Empty in the default linked
+        production path.
+    `diagnostics_included`: Whether basin diagnostics were computed.
+    `return_policy`: Compact return policy used by `document_ids()`.
+    `return_documents`: Ranked document ids selected for compact return.
     `uncertainty`: Structural caution score. It is not a truth probability.
     `document_energy`: Final diffused energy by document id.
     `document_specificity`: Local information-density score by document id.
@@ -44,8 +48,11 @@ class ReconciliationResult:
 
     Attributes:
         query: Query used to produce the result.
-        winner: Highest-scoring basin.
-        basins: All detected basins sorted by descending score.
+        winner: Highest-scoring basin, or linked-evidence surface.
+        basins: Detected diagnostic basins sorted by descending score.
+        diagnostics_included: Whether basin diagnostics were computed.
+        return_policy: Compact return policy used by `document_ids()`.
+        return_documents: Ranked document ids selected for compact return.
         uncertainty: Structural uncertainty score in the `[0, 1]` interval.
         dispersion: Diffused-energy dispersion score.
         modularity: Graph modularity for the detected communities.
@@ -59,6 +66,9 @@ class ReconciliationResult:
     query: str
     winner: Basin
     basins: tuple[Basin, ...]
+    diagnostics_included: bool
+    return_policy: str
+    return_documents: tuple[str, ...]
     uncertainty: float
     dispersion: float
     modularity: float
@@ -69,7 +79,7 @@ class ReconciliationResult:
     edges: tuple[EvidenceEdge, ...]
 
     def document_ids(self, k: int = 5) -> list[str]:
-        """Return top-k document ids from the winning basin.
+        """Return top-k document ids from the compact return policy.
 
         Args:
             k: Maximum number of document ids to return.
@@ -77,10 +87,10 @@ class ReconciliationResult:
         Returns:
             Ranked document ids.
         """
-        return list(self.winner.documents[:k])
+        return list(self.return_documents[:k])
 
     def chunks(self, database: Database, k: int = 5) -> list[dict[str, Any]]:
-        """Return LLM-ready chunks from the winning basin.
+        """Return LLM-ready chunks from the compact return policy.
 
         Args:
             database: Database used to materialize chunk text and metadata.
@@ -100,17 +110,17 @@ class ReconciliationResult:
         database: Database,
         k: int | None = None,
     ) -> dict[str, Any]:
-        """Return the strongest basin with its chunks as the primary surface.
+        """Return the strongest diagnostic basin or linked evidence surface.
 
         Args:
             database: Database used to materialize chunk text and metadata.
-            k: Optional maximum number of chunks. When omitted, all winning-basin
+            k: Optional maximum number of chunks. When omitted, all selected
                 documents are returned.
 
         Returns:
-            Structured strongest-basin payload.
+            Structured basin-compatible payload.
         """
-        doc_ids = self.winner.documents if k is None else tuple(self.document_ids(k))
+        doc_ids = self.winner.documents if k is None else self.winner.documents[:k]
         chunks = [
             chunk
             for doc_id in doc_ids
@@ -123,7 +133,7 @@ class ReconciliationResult:
             "chunks": chunks,
             "uncertainty": {
                 "score": self.uncertainty,
-                "level": "high" if self.uncertainty > 0.5 else "low",
+                "level": self.uncertainty_level(),
             },
             "metrics": {
                 "modularity": self.modularity,
@@ -164,9 +174,42 @@ class ReconciliationResult:
             "support": self.document_support.get(doc_id, 0.0),
         }
         if include_basin:
-            chunk["basin"] = self.winner.label
-            chunk["basin_score"] = self.winner.score
+            chunk["return_policy"] = self.return_policy
+            chunk["basin"] = self.basin_label_for(doc_id)
+            chunk["basin_score"] = self.basin_score_for(doc_id)
         return chunk
+
+    def basin_label_for(self, doc_id: str) -> str:
+        """Return the basin label containing a document.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            Basin label, or `unassigned` when no basin contains the document.
+        """
+        for basin in self.basins:
+            if doc_id in basin.documents:
+                return basin.label
+        if self.return_policy == "linked" and doc_id in self.return_documents:
+            return "linked-evidence"
+        return "unassigned"
+
+    def basin_score_for(self, doc_id: str) -> float:
+        """Return the basin score containing a document.
+
+        Args:
+            doc_id: Document identifier.
+
+        Returns:
+            Basin score, or `0.0` when no basin contains the document.
+        """
+        for basin in self.basins:
+            if doc_id in basin.documents:
+                return basin.score
+        if self.return_policy == "linked" and doc_id in self.return_documents:
+            return self.winner.score
+        return 0.0
 
     def evidence_field(self, max_basins: int = 3, max_edges: int = 12) -> dict[str, Any]:
         """Return the inspection field with winner and competing basins.
@@ -197,6 +240,9 @@ class ReconciliationResult:
         return {
             "query": self.query,
             "winning_basin": self.basin_dict(self.winner),
+            "diagnostics_included": self.diagnostics_included,
+            "return_policy": self.return_policy,
+            "return_documents": list(self.return_documents),
             "competing_basins": [
                 self.basin_dict(basin)
                 for basin in self.basins[1:max_basins]
@@ -213,7 +259,7 @@ class ReconciliationResult:
             ],
             "uncertainty": {
                 "score": self.uncertainty,
-                "level": "high" if self.uncertainty > 0.5 else "low",
+                "level": self.uncertainty_level(),
                 "reasons": uncertainty_explanation,
             },
             "metrics": {
@@ -221,6 +267,19 @@ class ReconciliationResult:
                 "dispersion": self.dispersion,
             },
         }
+
+    def uncertainty_level(self) -> str:
+        """Return a human-readable uncertainty level.
+
+        Args:
+            None.
+
+        Returns:
+            `not_computed`, `high`, or `low`.
+        """
+        if not self.diagnostics_included:
+            return "not_computed"
+        return "high" if self.uncertainty > 0.5 else "low"
 
     def basin_dict(self, basin: Basin) -> dict[str, Any]:
         """Serialize a basin for public result payloads.

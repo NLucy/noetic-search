@@ -1,4 +1,20 @@
-"""Hybrid search combining semantic and lexical retrieval."""
+"""Hybrid first-stage retrieval.
+
+Hybrid search is the broad recall layer that feeds Noetic reconciliation. It
+combines ChromaDB semantic retrieval with local BM25 lexical retrieval, then
+min-max normalizes both channels before adding them with configurable weights.
+
+This module does not build graphs or make final compact-return decisions. Its
+job is to provide a candidate field large enough for the reconciliation layer to
+recover linked support that may not appear in the first few raw results.
+
+Key variables:
+    `semantic_weight`: Contribution of normalized vector similarity.
+    `lexical_weight`: Contribution of normalized BM25 score.
+    `limit`: Number of hybrid results returned to the caller.
+    `where`: Optional metadata equality filter passed into both retrieval
+        channels.
+"""
 
 from __future__ import annotations
 

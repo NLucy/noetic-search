@@ -1,16 +1,19 @@
-"""Representative chunk ranking inside the winning basin.
+"""Compact evidence ranking.
 
-Basin selection chooses the strongest evidence region. Ranking chooses which
-members of that region should be returned to the caller or LLM. Those are
-different decisions: a basin can be correct while some of its members are
-generic, repetitive, or less useful than others.
+The benchmarked production ranker is linked-evidence ranking. It preserves the
+strongest first-stage hybrid anchors, then promotes graph candidates connected
+to those anchors. This is the deterministic step that turns broad retrieval into
+a compact multi-hop evidence set.
 
-The default ranking favors specificity, an IDF-like signal computed within the
-candidate field, with diffused energy as a smaller tie-in. The purpose is to
-return compact, information-dense representatives of the winning basin rather
-than echoing the original hybrid rank.
+Basin-local ranking remains available for `return_policy="basin"` and research
+diagnostics. That alternate ranking favors specificity, an IDF-like signal
+computed within the candidate field, with diffused energy as a smaller tie-in.
 
 Key variables:
+    `graph_candidates`: Candidates admitted to the local graph.
+    `anchors`: Strongest early hybrid candidates preserved by linked ranking.
+    `anchor_affinity`: Strongest graph edge from a candidate to an anchor.
+    `support`: Weighted graph degree used by linked ranking.
     `doc_ids`: Members of the already-selected winning basin.
     `energy`: Settled diffusion energy by document id. It is a supporting signal,
         not the main ranking signal.
@@ -19,9 +22,13 @@ Key variables:
         scales from dominating the final rank score.
     `rank_score`: Weighted ranking score. Specificity dominates; energy breaks
         ties toward better-supported chunks.
+    `linked_evidence`: Return policy that preserves early hybrid anchors and
+        promotes candidates connected to those anchors in the graph.
 """
 
 from __future__ import annotations
+
+from noetic_systems.search.semantic import SearchResult
 
 
 def rank_basin_documents(
@@ -75,3 +82,97 @@ def rank_basin_documents(
         )
 
     return sorted(doc_ids, key=score, reverse=True)
+
+
+def rank_linked_evidence(
+    graph_candidates: list[SearchResult],
+    graph: dict[str, dict[str, float]],
+    *,
+    anchor_count: int = 4,
+    query_weight: float = 0.50,
+    link_weight: float = 0.35,
+    support_weight: float = 0.15,
+    anchor_bonus: float = 2.0,
+) -> list[str]:
+    """Rank candidates by preserving hybrid anchors and promoting linked evidence.
+
+    Args:
+        graph_candidates: Candidates admitted to the local evidence graph.
+        graph: Weighted adjacency mapping over graph candidates.
+        anchor_count: Number of top hybrid candidates kept as anchors.
+        query_weight: Weight for original hybrid score after the anchors.
+        link_weight: Weight for edge strength to the anchors.
+        support_weight: Weight for weighted graph degree.
+        anchor_bonus: Fixed score boost that keeps anchors at the top.
+
+    Returns:
+        Ranked document ids for compact linked-evidence return.
+    """
+    if not graph_candidates:
+        return []
+
+    candidate_ids = [candidate.id for candidate in graph_candidates]
+    anchors = candidate_ids[:anchor_count]
+    query_score = normalize_feature(
+        {candidate.id: candidate.score for candidate in graph_candidates}
+    )
+    support = normalize_feature(
+        {
+            doc_id: sum(neighbors.values())
+            for doc_id, neighbors in graph.items()
+        }
+    )
+    anchor_affinity = normalize_feature(
+        {
+            doc_id: max(
+                (graph.get(doc_id, {}).get(anchor, 0.0) for anchor in anchors),
+                default=0.0,
+            )
+            for doc_id in candidate_ids
+        }
+    )
+    original_rank = {
+        candidate.id: index
+        for index, candidate in enumerate(graph_candidates)
+    }
+
+    def score(doc_id: str) -> tuple[float, int]:
+        """Score one candidate for linked-evidence ranking.
+
+        Args:
+            doc_id: Candidate document id.
+
+        Returns:
+            Descending score and ascending original rank.
+        """
+        if doc_id in anchors:
+            return anchor_bonus - (original_rank[doc_id] * 0.001), -original_rank[doc_id]
+        value = (
+            query_weight * query_score.get(doc_id, 0.0)
+            + link_weight * anchor_affinity.get(doc_id, 0.0)
+            + support_weight * support.get(doc_id, 0.0)
+        )
+        return value, -original_rank.get(doc_id, 10**9)
+
+    return sorted(candidate_ids, key=score, reverse=True)
+
+
+def normalize_feature(values: dict[str, float]) -> dict[str, float]:
+    """Normalize feature values to the `[0, 1]` interval.
+
+    Args:
+        values: Raw feature values by document id.
+
+    Returns:
+        Min-max normalized values.
+    """
+    if not values:
+        return {}
+    minimum = min(values.values())
+    maximum = max(values.values())
+    if maximum == minimum:
+        return {doc_id: 1.0 for doc_id in values}
+    return {
+        doc_id: (value - minimum) / (maximum - minimum)
+        for doc_id, value in values.items()
+    }

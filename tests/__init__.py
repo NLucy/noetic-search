@@ -1,1 +1,1 @@
-"""Test suite for Noetic Systems."""
+"""Test suite for Noetic Search."""

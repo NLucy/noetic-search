@@ -1,5 +1,17 @@
 #!/usr/bin/env python
-"""Evaluate top-k retrieval vs strongest-basin reconciliation on the hard benchmark."""
+"""Evaluate retrieval and reconciliation quality on the hard benchmark.
+
+The benchmark reports two kinds of evidence. The first is the original
+case-level summary used during development: top-5 majority accuracy, decoy rate,
+target-present rate, and latency. The second is a standard information-retrieval
+view: precision, recall, hit rate, and MRR at configurable rank cutoffs.
+
+The optional ablation report keeps the production pipeline unchanged while
+testing which layers are carrying value. It compares raw hybrid retrieval,
+production Noetic reconciliation, whole-field ranking without spectral basins,
+undiffused seed energy, energy-only basin selection, and returning the winning
+basin in raw hybrid order.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +22,20 @@ from pathlib import Path
 from typing import Any
 
 from noetic_systems.database import Database
+from noetic_systems.evaluation.ablations import (
+    ABLATION_VARIANTS,
+    ranked_ids_for_variant,
+)
+from noetic_systems.evaluation.metrics import (
+    add_metric_totals,
+    average_metric_totals,
+    empty_metric_totals,
+    parse_k_values,
+)
 from noetic_systems.reconciliation.engine import Reconciler
+from noetic_systems.reconciliation.models import Basin
+
+DEFAULT_K_VALUES = (1, 3, 5, 10, 20, 30)
 
 
 def target_doc_ids(data: dict[str, Any], case_id: str) -> set[str]:
@@ -75,11 +100,11 @@ def docs_target_score(
     return sum(1 for doc_id in doc_ids if doc_id in target_ids) / len(doc_ids)
 
 
-def basin_summary(basin) -> str:
+def basin_summary(basin: Basin) -> str:
     """Format a basin summary for diagnostic output.
 
     Args:
-        basin: Basin-like object with score and metric attributes.
+        basin: Basin record to summarize.
 
     Returns:
         Compact human-readable basin summary.
@@ -109,6 +134,9 @@ def percentile(values: list[float], pct: float) -> float:
 
 def main() -> None:
     """Run the hard benchmark evaluation CLI.
+
+    Args:
+        None.
 
     Returns:
         None.
@@ -149,6 +177,35 @@ def main() -> None:
         help="embedding similarity threshold for graph edges",
     )
     parser.add_argument(
+        "--diffusion-steps",
+        type=int,
+        default=10,
+        help="diffusion time steps for Noetic and ablation variants",
+    )
+    parser.add_argument(
+        "--damping",
+        type=float,
+        default=0.85,
+        help="fraction of energy moved across graph edges each diffusion step",
+    )
+    parser.add_argument(
+        "--ks",
+        type=parse_k_values,
+        default=list(DEFAULT_K_VALUES),
+        help="comma-separated rank cutoffs for precision, recall, hit, and MRR",
+    )
+    parser.add_argument(
+        "--ablations",
+        action="store_true",
+        help="run layer ablations in addition to hybrid and production Noetic",
+    )
+    parser.add_argument(
+        "--return-policy",
+        default="basin",
+        choices=("basin", "linked"),
+        help="Noetic return policy for the synthetic hard benchmark",
+    )
+    parser.add_argument(
         "--limit-cases",
         type=int,
         default=None,
@@ -184,7 +241,14 @@ def main() -> None:
     candidate_target_present = 0
     rows = []
     baseline_times = []
+    candidate_baseline_times = []
     reconcile_times = []
+    max_k = max(args.ks)
+    variants = ABLATION_VARIANTS if args.ablations else ("hybrid", "noetic")
+    ranking_totals = {
+        variant: empty_metric_totals(args.ks)
+        for variant in variants
+    }
 
     if args.limit_cases is not None:
         case_items = case_items[: args.limit_cases]
@@ -194,10 +258,16 @@ def main() -> None:
         expected = case["expected_stance"]
 
         baseline_start = time.perf_counter()
-        baseline_ids = reconciler.hybrid_baseline(query, limit=5)
+        baseline_ids = reconciler.hybrid_baseline(query, limit=max_k)
         baseline_times.append((time.perf_counter() - baseline_start) * 1000)
+        candidate_baseline_start = time.perf_counter()
+        reconciler.hybrid_baseline(query, limit=args.candidate_limit)
+        candidate_baseline_times.append(
+            (time.perf_counter() - candidate_baseline_start) * 1000
+        )
         target_ids = target_doc_ids(data, case_id)
-        baseline_target_score = docs_target_score(baseline_ids, target_ids)
+        baseline_top5_ids = baseline_ids[:5]
+        baseline_target_score = docs_target_score(baseline_top5_ids, target_ids)
         baseline_winner = "target" if baseline_target_score >= 0.5 else "other"
 
         reconcile_start = time.perf_counter()
@@ -205,7 +275,10 @@ def main() -> None:
             query,
             candidate_limit=args.candidate_limit,
             result_limit=args.result_limit,
+            diffusion_steps=args.diffusion_steps,
+            damping=args.damping,
             edge_threshold=args.edge_threshold,
+            return_policy=args.return_policy,
         )
         reconcile_times.append((time.perf_counter() - reconcile_start) * 1000)
         candidates = reconciler.hybrid.search(query, limit=args.candidate_limit)
@@ -230,10 +303,31 @@ def main() -> None:
         winner_target_score = docs_target_score(result.winner.documents, target_ids)
         basin_top5_ids = result.document_ids(5)
         basin_top5_target_score = docs_target_score(basin_top5_ids, target_ids)
+        graph_candidates = candidates[: args.result_limit]
+
+        add_metric_totals(ranking_totals["hybrid"], baseline_ids, target_ids)
+        add_metric_totals(
+            ranking_totals["noetic"],
+            result.document_ids(max_k),
+            target_ids,
+        )
+        if args.ablations:
+            for variant in variants:
+                if variant in {"hybrid", "noetic"}:
+                    continue
+                variant_ids = ranked_ids_for_variant(
+                    db,
+                    graph_candidates,
+                    variant,
+                    edge_threshold=args.edge_threshold,
+                    diffusion_steps=args.diffusion_steps,
+                    damping=args.damping,
+                )
+                add_metric_totals(ranking_totals[variant], variant_ids, target_ids)
 
         if baseline_target_score >= 0.5:
             baseline_hits += 1
-        if baseline_ids and baseline_ids[0] not in target_ids:
+        if baseline_top5_ids and baseline_top5_ids[0] not in target_ids:
             baseline_decoy_top += 1
         if winner_target_score >= 0.5:
             basin_majority_hits += 1
@@ -255,7 +349,7 @@ def main() -> None:
                 "field_score": result.winner.score,
                 "energy": result.winner.energy,
                 "uncertainty": result.uncertainty,
-                "top5": baseline_ids,
+                "top5": baseline_top5_ids,
                 "basin_top5": basin_top5_ids,
                 "candidate_top_ids": [candidate.id for candidate in candidates],
                 "winner_ids": list(result.winner.documents),
@@ -275,11 +369,16 @@ def main() -> None:
                 "winner_basin": result.winner,
                 "basins": result.basins[:4],
                 "baseline_ms": baseline_times[-1],
+                "candidate_baseline_ms": candidate_baseline_times[-1],
                 "reconcile_ms": reconcile_times[-1],
             }
         )
 
     total = len(case_items)
+    ranking_metrics_by_variant = {
+        variant: average_metric_totals(totals, total)
+        for variant, totals in ranking_totals.items()
+    }
     metrics = {
         "mode": "blind" if args.blind else "labeled",
         "documents": data["metadata"]["total_documents"],
@@ -287,6 +386,10 @@ def main() -> None:
         "candidate_limit": args.candidate_limit,
         "result_limit": args.result_limit,
         "edge_threshold": args.edge_threshold,
+        "return_policy": args.return_policy,
+        "diffusion_steps": args.diffusion_steps,
+        "damping": args.damping,
+        "ks": args.ks,
         "baseline_majority_top5_accuracy": baseline_hits / total if total else 0.0,
         "baseline_top1_decoy_rate": baseline_decoy_top / total if total else 0.0,
         "strongest_basin_majority_accuracy": basin_majority_hits / total if total else 0.0,
@@ -296,8 +399,11 @@ def main() -> None:
         "target_heavy_basin_ranked_first_rate": expected_basin_rank1 / total if total else 0.0,
         "baseline_ms_p50": percentile(baseline_times, 0.50),
         "baseline_ms_p95": percentile(baseline_times, 0.95),
+        "candidate_baseline_ms_p50": percentile(candidate_baseline_times, 0.50),
+        "candidate_baseline_ms_p95": percentile(candidate_baseline_times, 0.95),
         "reconcile_ms_p50": percentile(reconcile_times, 0.50),
         "reconcile_ms_p95": percentile(reconcile_times, 0.95),
+        "ranking": ranking_metrics_by_variant,
     }
     metrics["noetic_top5_uplift_cases"] = basin_top5_hits - baseline_hits
 
@@ -305,6 +411,8 @@ def main() -> None:
     print(f"mode: {metrics['mode']}")
     print(f"candidate/result limit: {args.candidate_limit}/{args.result_limit}")
     print(f"edge threshold: {args.edge_threshold:.2f}")
+    print(f"return policy: {args.return_policy}")
+    print(f"diffusion steps/damping: {args.diffusion_steps}/{args.damping:.2f}")
     print(f"documents: {metrics['documents']}")
     print(f"cases: {total}")
     print(f"standard hybrid top-5 majority accuracy: {baseline_hits}/{total}")
@@ -319,7 +427,26 @@ def main() -> None:
     print(f"candidate target-present rate: {candidate_target_present}/{total}")
     print(f"target-heavy basin ranked first: {expected_basin_rank1}/{total}")
     print(f"baseline latency p50/p95 ms: {metrics['baseline_ms_p50']:.1f}/{metrics['baseline_ms_p95']:.1f}")
+    print(
+        "hybrid@candidate latency p50/p95 ms: "
+        f"{metrics['candidate_baseline_ms_p50']:.1f}/"
+        f"{metrics['candidate_baseline_ms_p95']:.1f}"
+    )
     print(f"reconcile latency p50/p95 ms: {metrics['reconcile_ms_p50']:.1f}/{metrics['reconcile_ms_p95']:.1f}")
+    print()
+
+    print("=== RANKING METRICS ===")
+    print("variant         k   P@k    R@k    Hit@k  MRR@k")
+    for variant in variants:
+        for k in args.ks:
+            values = ranking_metrics_by_variant[variant][f"@{k}"]
+            print(
+                f"{variant:14} {k:2d}  "
+                f"{values['precision']:.3f}  "
+                f"{values['recall']:.3f}  "
+                f"{values['hit']:.3f}  "
+                f"{values['mrr']:.3f}"
+            )
     print()
 
     for row in rows:

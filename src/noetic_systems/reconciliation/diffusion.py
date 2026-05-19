@@ -27,9 +27,15 @@ retrieval confidence and graph support reinforce each other.
 Diffusion and basin detection are related but distinct. The current pipeline
 detects basins from graph structure using spectral partitioning, then uses
 diffusion to measure how the seeded retrieval signal settles inside those
-basins. In other words, diffusion does not create the basin labels by itself. It
-helps decide which detected basin is strongest and which members of that basin
-deserve to be returned.
+basins. In other words, diffusion does not create the basin labels by itself.
+
+Diffusion is also not the primary driver of the current external benchmark win.
+The default linked-evidence return policy uses graph edges directly to preserve
+strong hybrid anchors and promote connected support chunks. Diffusion remains in
+the system because it powers basin scoring, uncertainty, trace visualization,
+and the alternate basin-only return policy. That distinction matters: graph
+construction and linked ranking are the measured retrieval improvement; diffusion
+is the diagnostic and basin-scoring layer.
 
 This is a limited graph computation, not open-ended reasoning. It does not
 generate claims or infer facts beyond the retrieved chunks. Its role is to

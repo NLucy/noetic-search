@@ -1,20 +1,22 @@
 # Reconciliation Module Map
 
 This package contains the post-retrieval reconciliation path for Noetic Search.
-It turns a broad hybrid-retrieval candidate field into a scored evidence basin
-and returns representative chunks from that basin.
+It turns a broad hybrid-retrieval candidate field into a local evidence graph
+and returns compact graph-linked evidence.
 
 The main idea is simple: first-stage retrieval should be broad, but final LLM
-context should be coherent. Reconciliation is the layer between those two
-requirements. It keeps the candidate field local to one query, turns candidates
-into a graph, detects coherent regions in that graph, lets retrieval confidence
-move through the graph, and returns the best representatives of the strongest
-region.
+context should be compact and connected. Reconciliation is the layer between
+those two requirements. It keeps the candidate field local to one query, turns
+candidates into a graph, and returns a linked evidence set that preserves
+strong hybrid anchors while promoting connected supporting chunks. Spectral,
+diffusion, and basin modules remain available for explicit diagnostics and
+research.
 
 The modules are named to match the durable implementation boundaries:
 
 ```text
-engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
+engine -> graph -> ranking -> result
+       -> spectral -> diffusion -> basins
        -> metrics -> models
 ```
 
@@ -22,9 +24,10 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
 
 1. `engine.py`
    The orchestration layer. Start here to see the full sequence in one method:
-   retrieve candidates, admit graph candidates, build the graph, detect basins,
-   initialize and diffuse energy, score basins, estimate uncertainty, and return a
-   result.
+   retrieve candidates, admit graph candidates, build the graph, rank linked
+   evidence, and return a result. If `include_diagnostics=True` or
+   `return_policy="basin"` is used, the engine also runs spectral detection,
+   diffusion, basin scoring, and uncertainty estimation.
    The engine should stay thin. It answers "what happens next?" while each
    process module answers "how is this step computed?"
    Candidate admission is intentionally simple and stays here: the graph field
@@ -33,13 +36,29 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
 2. `graph.py`
    Builds the evidence graph. Chunks become nodes. Each chunk pair can receive
    one weighted evidence connection. That connection may combine embedding
-   similarity and near-duplicate signal contributions. Metadata remains part of
-   the returned chunk payload, but it does not create graph edges.
+   similarity, lexical salience, explicit cross-reference, and near-duplicate
+   signal contributions. Metadata remains part of the returned chunk payload,
+   but the graph is built from ordinary text and embeddings.
    This is where the retrieved list becomes a structure. The graph does not
    answer the query by itself; it defines which candidates can support, repeat,
    or relate to one another before spectral analysis and diffusion run.
 
-3. `spectral.py`
+3. `ranking.py`
+   Ranks compact return chunks. The default linked-evidence policy preserves the
+   strongest hybrid anchors and promotes candidates connected to those anchors in
+   the graph. The older basin-only ranking remains available through
+   `return_policy="basin"` for inspection and comparison.
+   Current ablations show this is the production source of lift: anchors alone
+   reproduce hybrid, graph support alone performs poorly, and anchor-linked
+   promotion improves compact recall.
+
+4. `result.py`
+   Exposes caller-facing surfaces: document ids, LLM-ready chunks, strongest
+   basin payloads, and the full evidence field. The default product surface is
+   linked evidence. The inspection surface can also return competing basins when
+   diagnostics are included.
+
+5. `spectral.py`
    Uses the normalized graph Laplacian and Fiedler vector to propose basin
    boundaries. If the graph does not support a useful split, the field remains
    one basin.
@@ -49,7 +68,7 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
    This step defines the basin assignments. Diffusion later uses those fixed
    assignments; it does not create or redraw them.
 
-4. `diffusion.py`
+6. `diffusion.py`
    Converts hybrid retrieval scores and ranks into the initial energy
    distribution, then runs discrete time-step propagation over a graph. The
    trace viewer uses the same diffusion update in two ways: first on the whole
@@ -67,8 +86,12 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
    Diffusion does not find, move, or redraw basins; it measures how retrieval
    confidence settles on nodes inside the basins that spectral analysis already
    proposed.
+   Diffusion is not the default chunk selector. The current external benchmark
+   gains come from graph construction and linked-evidence ranking. Diffusion
+   remains useful for basin scoring, uncertainty, the trace viewer, and
+   `return_policy="basin"`.
 
-5. `basins.py`
+7. `basins.py`
    Scores each fixed spectral basin using settled energy, support, cohesion, and
    duplicate pressure.
    This step chooses between regions, not individual chunks. A good basin should
@@ -83,19 +106,6 @@ engine -> graph -> spectral -> diffusion -> basins -> ranking -> result
    if the runner-up basin is close to the winner, uncertainty rises. Dispersion
    checks whether diffused energy stayed scattered instead of settling, and
    modularity checks whether the graph split had a clear structure.
-
-6. `ranking.py`
-   Ranks representative chunks only inside the winning basin. Ranking happens
-   after basin scoring because discarded basins do not need final return order.
-   Once the winning region is known, the task becomes selecting the most useful
-   representatives of that region for a compact LLM payload.
-
-7. `result.py`
-   Exposes caller-facing surfaces: document ids, LLM-ready chunks, strongest
-   basin payloads, and the full evidence field. The default product surface is
-   the winning basin's chunks. The inspection surface can also return competing
-   basins so an engineer, evaluator, or LLM prompt can see what the winning
-   basin beat and whether the field was structurally uncertain.
 
 8. `metrics.py`
    Provides shared graph and text measurements used by basin scoring, uncertainty,
@@ -116,17 +126,19 @@ The normal caller path is:
 Reconciler.reconcile(query).chunks(database, k=5)
 ```
 
-That returns the top representative chunks from the winning basin. The caller can
-instead ask for `strongest_basin()` when it wants basin metrics alongside chunks,
-or `evidence_field()` when it wants the inspection view with competing basins and
-uncertainty reasons.
+That returns a compact linked evidence set. The caller can set
+`return_policy="basin"` when it wants the older strongest-basin return behavior,
+or set `include_diagnostics=True` when it wants basin metrics alongside chunks.
+Without diagnostics, `strongest_basin()` returns the linked evidence surface and
+`evidence_field()` exposes graph edges without competing basin records.
 
 ## What To Change Carefully
 
 - Change `graph.py` carefully: edge weights define every downstream operation.
 - Change `spectral.py` carefully: split guards decide whether basins exist.
 - Change `diffusion.py` carefully: it determines how retrieval confidence is
-  initialized and settles inside the fixed graph.
+  initialized and settles inside the fixed graph for basin scoring and
+  inspection.
 - Change `basins.py` carefully: basin scoring determines the winning region and
   uncertainty.
 - Change `ranking.py` carefully: chunk ranking determines what the LLM actually sees.

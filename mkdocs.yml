@@ -1,4 +1,4 @@
-site_name: Noetic Systems
+site_name: Noetic Search
 site_description: Post-retrieval graph reconciliation for hybrid search.
 site_url: ""
 
@@ -9,7 +9,11 @@ theme:
 nav:
   - Overview: index.md
   - The Math: process.md
-  - Trace Viewer: trace.md
+  - Evidence Graph: evidence_graph.md
+  - Auto Calibration: auto_calibration.md
+  - Spectral Diffusion: spectral_diffusion.md
+  - Production Trace: trace.md
+  - Diagnostic Trace: diagnostics_trace.md
 
 extra_css:
   - stylesheets/clean.css

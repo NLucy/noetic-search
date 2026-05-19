@@ -2,13 +2,15 @@
 
 The trace is a concrete snapshot of one benchmark query moving through Noetic
 Search. It is not a separate algorithm. It runs the same retrieval,
-graph-building, spectral detection, diffusion, basin scoring, and ranking code
-used by the package, then writes the intermediate artifacts to JSON.
+graph-building and linked-evidence ranking code used by the production path,
+plus the spectral, diffusion, and basin diagnostics used by the trace viewer,
+then writes the intermediate artifacts to JSON.
 
 Key variables:
     `max_points`: Maximum number of corpus chunks shown in the browser. The
-        trace always includes hybrid candidates, graph candidates, winner chunks,
-        and target evidence for the selected case before filling the rest.
+        trace always includes hybrid candidates, graph candidates, returned
+        chunks, diagnostic basin chunks, and target evidence before filling the
+        rest.
     `candidate_limit`: Number of hybrid candidates retrieved from first-stage
         search.
     `result_limit`: Number of candidates admitted into the local graph.
@@ -32,6 +34,10 @@ from typing import Any
 import numpy as np
 
 from noetic_systems.database import Database
+from noetic_systems.reconciliation.calibration import (
+    GRAPH_OBJECTIVES,
+    calibrate_corpus_graph_weights,
+)
 from noetic_systems.reconciliation.basins import (
     BASIN_SUPPORT_SATURATION,
     build_basins,
@@ -49,23 +55,29 @@ from noetic_systems.reconciliation.metrics import (
     calculate_dispersion,
     calculate_modularity,
     document_specificity,
+    document_support,
 )
-from noetic_systems.reconciliation.ranking import rank_basin_documents
+from noetic_systems.reconciliation.ranking import (
+    normalize_feature,
+    rank_basin_documents,
+    rank_linked_evidence,
+)
 from noetic_systems.reconciliation.spectral import detect_communities
 from noetic_systems.search.hybrid import HybridSearch
 from noetic_systems.search.semantic import SearchResult
 
 
-DEFAULT_TRACE_PATH = Path("docs/trace.json")
-MULTI_BASIN_TRACE_CASE_ID = "multi_basin_release"
+DEFAULT_TRACE_CASE_ID = "hotpot_big_stone_gap"
+DEFAULT_TRACE_DATA_PATH = Path("docs/hotpot_big_stone_gap.json")
+DEFAULT_TRACE_PATH = Path("docs/production_trace.json")
 DEFAULT_TRACE_EDGE_THRESHOLD = 0.75
 
 
 def generate_trace(
     *,
-    data_path: Path,
+    data_path: Path = DEFAULT_TRACE_DATA_PATH,
     output_path: Path = DEFAULT_TRACE_PATH,
-    case_id: str = MULTI_BASIN_TRACE_CASE_ID,
+    case_id: str = DEFAULT_TRACE_CASE_ID,
     collection_name: str = "noetic_trace",
     blind: bool = True,
     max_points: int = 500,
@@ -74,6 +86,9 @@ def generate_trace(
     diffusion_steps: int = 4,
     damping: float = 0.85,
     edge_threshold: float = DEFAULT_TRACE_EDGE_THRESHOLD,
+    calibrate_graph: bool = False,
+    graph_objective: str = "reference_forward",
+    calibration_sample: int = 500,
 ) -> dict[str, Any]:
     """Generate and write one browser visualization trace.
 
@@ -89,15 +104,17 @@ def generate_trace(
         diffusion_steps: Number of diffusion updates to capture.
         damping: Fraction of energy allowed to move per diffusion step.
         edge_threshold: Minimum embedding similarity for graph edges.
+        calibrate_graph: Whether to derive corpus-level graph weights before
+            graph construction.
+        graph_objective: Label-free objective used for graph calibration.
+        calibration_sample: Documents sampled for graph calibration.
 
     Returns:
         Trace dictionary written to `output_path`.
     """
-    data = (
-        multi_basin_trace_data()
-        if case_id == MULTI_BASIN_TRACE_CASE_ID
-        else json.loads(data_path.read_text())
-    )
+    if graph_objective not in GRAPH_OBJECTIVES:
+        raise ValueError(f"unknown graph objective: {graph_objective}")
+    data = json.loads(data_path.read_text())
     case = data["cases"][case_id]
     target_ids = target_doc_ids(data, case_id)
     corpus = strip_custom_metadata(data) if blind else data["corpus"]
@@ -105,13 +122,25 @@ def generate_trace(
     database = Database(collection_name=collection_name, reset=True)
     try:
         database.add_documents(corpus)
+        graph_weights = None
+        if calibrate_graph:
+            graph_weights, _profile = calibrate_corpus_graph_weights(
+                database,
+                sample_limit=calibration_sample,
+                objective=graph_objective,
+            )
         hybrid = HybridSearch(database)
 
         query = case["query"]
         candidates = hybrid.search(query, limit=candidate_limit)
         graph_candidates = candidates[:result_limit]
         doc_index = {result.id: result for result in graph_candidates}
-        graph, evidence_edges = build_evidence_graph(database, doc_index, edge_threshold)
+        graph, evidence_edges = build_evidence_graph(
+            database,
+            doc_index,
+            edge_threshold,
+            weights=graph_weights,
+        )
         communities = detect_communities(graph)
 
         energy = seed_energy(graph_candidates)
@@ -134,8 +163,11 @@ def generate_trace(
         modularity = calculate_modularity(graph, communities)
         dispersion = calculate_dispersion(energy)
         uncertainty = calculate_uncertainty(basins, modularity, dispersion)
+        whole_graph_energy_winner = hybrid_seed_winner(basins, whole_energy)
 
         specificity = document_specificity(graph_candidates)
+        support = document_support(graph)
+        return_documents = tuple(rank_linked_evidence(graph_candidates, graph))
         if basins:
             ranked_winner_documents = rank_basin_documents(
                 list(basins[0].documents),
@@ -147,11 +179,12 @@ def generate_trace(
         else:
             winner = None
 
+        final_documents = return_documents[:5]
         visible_ids = select_visible_ids(
             data["corpus"],
             candidates,
             graph_candidates,
-            list(winner.documents) if winner else [],
+            [*list(final_documents), *list(winner.documents if winner else [])],
             target_ids,
             max_points,
         )
@@ -163,7 +196,7 @@ def generate_trace(
             result.id: index + 1
             for index, result in enumerate(graph_candidates)
         }
-        final_ids = set(winner.documents[:5] if winner else ())
+        final_ids = set(final_documents)
         winner_ids = set(winner.documents if winner else ())
 
         points = [
@@ -198,6 +231,9 @@ def generate_trace(
                 "diffusion_steps": diffusion_steps,
                 "damping": damping,
                 "edge_threshold": edge_threshold,
+                "calibrate_graph": calibrate_graph,
+                "graph_objective": graph_objective,
+                "calibration_sample": calibration_sample,
             },
             "points": points,
             "edges": graph_edges(graph),
@@ -242,13 +278,25 @@ def generate_trace(
                 "documents": list(winner.documents[:5] if winner else []),
                 "score": winner.score if winner else 0.0,
             },
+            "return_policy": "linked",
+            "return_documents": list(return_documents),
+            "final_chunks": final_chunk_records(
+                list(final_documents),
+                graph_candidates,
+                graph,
+                support,
+            ),
             "metrics": {
                 "modularity": modularity,
                 "dispersion": dispersion,
                 "uncertainty": uncertainty,
                 "hybrid_seed_winner": hybrid_seed_winner(basins, initial_energy),
+                "whole_graph_energy_winner": whole_graph_energy_winner,
+                "flow_alignment": winner.label == whole_graph_energy_winner
+                if winner
+                else False,
                 "target_fraction_top5": target_fraction(
-                    winner.documents[:5] if winner else [],
+                    final_documents,
                     target_ids,
                 ),
             },
@@ -288,147 +336,6 @@ def target_doc_ids(data: dict[str, Any], case_id: str) -> set[str]:
         and doc["metadata"].get("gold") == "target"
     }
 
-
-def multi_basin_trace_data() -> dict[str, Any]:
-    """Build a homogeneous trace corpus with real basin separation.
-
-    The hard benchmark is optimized for evaluation, not always for visual
-    explanation. Some benchmark queries produce one coherent evidence region,
-    which is correct but visually unhelpful when teaching basin formation. This
-    trace corpus stays inside one Formula 1 race debrief, then creates internal
-    evidence regions around tyres, power unit, aero, and pit-wall strategy. The
-    pit-wall material is the obvious high-seed explanation. The broader
-    tyre/aero/power-unit material is the target explanation: the strategy call
-    mattered, but the stronger answer is that the restart exposed a compound
-    race-pace failure. The goal is a teaching example where basins emerge inside
-    one shared field and a multi-hop explanation can be inspected without domain
-    jargon getting in the way.
-
-    Returns:
-        Benchmark-shaped payload consumed by `generate_trace`.
-    """
-    topics = {
-        "tyres": [
-            "front-left graining after the safety car restart",
-            "medium tyre warmup failure in traffic",
-            "rear tyre surface overheating through sector two",
-            "long-stint lap time drop from thermal degradation",
-            "undercut window missed because the tyres were not ready",
-            "driver reported no traction on corner exit",
-            "high minimum pressures hurt the tyre contact patch",
-            "dirty air increased tyre sliding behind a rival",
-            "late stop left the car on used hard tyres",
-            "tyre blanket temperature was below target",
-        ],
-        "power_unit": [
-            "battery deployment clipped on the main straight",
-            "engine harvesting derated after high temperatures",
-            "ERS state of charge fell during defence",
-            "turbo temperature warning forced conservative mode",
-            "fuel saving target reduced full-throttle time",
-            "MGU-K recovery map was too aggressive",
-            "cooling lift-and-coast cost straight-line speed",
-            "power-unit vibration sensor triggered an alert",
-            "engine mode locked after the restart",
-            "overtake button was unavailable after lap thirty",
-        ],
-        "aero": [
-            "rear wing angle cost top speed",
-            "floor damage reduced rear downforce",
-            "front wing balance caused understeer",
-            "ride height was too high after the parc ferme change",
-            "porpoising forced a conservative setup",
-            "drag level was too high for the DRS train",
-            "diffuser strake damage followed a kerb strike",
-            "beam-wing choice hurt straight-line efficiency",
-            "crosswind made the car unstable in high-speed corners",
-            "aero balance shifted as fuel burned off",
-        ],
-        "pit_wall": [
-            "pit-stop release was delayed by a stuck wheel nut",
-            "safety-car call came one lap too late",
-            "double stack cost track position",
-            "traffic model underestimated the midfield queue",
-            "radio message confused the target lap",
-            "virtual-safety-car delta lost the pit-entry chance",
-            "strategy covered the wrong rival",
-            "pit crew reset delayed the front jack",
-            "team stayed out during the best stop window",
-            "undercut threat was missed on the timing screen",
-        ],
-    }
-
-    corpus: list[dict[str, Any]] = []
-    for topic, phrases in topics.items():
-        gold = "decoy" if topic == "pit_wall" else "target"
-        stance = "obvious-strategy-decoy" if topic == "pit_wall" else "race-pace-failure"
-        for index, phrase in enumerate(phrases, start=1):
-            doc_id = f"{topic}-{index}"
-            corpus.append(
-                {
-                    "id": doc_id,
-                    "text": (
-                        f"Formula 1 race debrief evidence: {phrase}. "
-                        "The note explains why the car lost race pace after "
-                        "the safety car and whether the team could recover a "
-                        "podium position."
-                    ),
-                    "metadata": {
-                        "source": "demo",
-                        "domain": "formula1",
-                        "title": f"{topic} race evidence {index}",
-                        "case": MULTI_BASIN_TRACE_CASE_ID,
-                        "gold": gold,
-                        "stance": stance,
-                    },
-                }
-            )
-
-    for index in range(60):
-        if index % 3 == 0:
-            context = "race debrief timeline summary"
-        elif index % 3 == 1:
-            context = "lap chart and stint overview"
-        else:
-            context = "general radio and timing note"
-        corpus.append(
-            {
-                "id": f"context-{index}",
-                "text": (
-                    f"Formula 1 race context note {index}: {context}. "
-                    "This is lower-specificity background for the same Grand "
-                    "Prix review."
-                ),
-                "metadata": {
-                    "source": "demo",
-                    "domain": "formula1",
-                    "title": f"race context note {index}",
-                },
-            }
-        )
-
-    return {
-        "corpus": corpus,
-        "cases": {
-            MULTI_BASIN_TRACE_CASE_ID: {
-                "query": (
-                    "Formula 1 race debrief why did the car lose race pace "
-                    "after the safety car and miss the podium"
-                ),
-                "expected_stance": (
-                    "The obvious strategy explanation should receive high "
-                    "initial hybrid seed energy, but the selected answer should "
-                    "come from the broader race-pace failure region: tyre "
-                    "warmup and degradation, dirty air and aero balance, and "
-                    "power-unit deployment limits after the safety car."
-                ),
-            }
-        },
-        "metadata": {
-            "name": "Formula 1 multi-basin trace demo",
-            "document_count": len(corpus),
-        },
-    }
 
 def strip_custom_metadata(data: dict[str, Any]) -> list[dict[str, Any]]:
     """Strip benchmark-only labels before indexing.
@@ -671,6 +578,65 @@ def hybrid_seed_winner(
         basins,
         key=lambda basin: basin_seed_energy(basin.documents, initial_energy),
     ).label
+
+
+def final_chunk_records(
+    doc_ids: list[str],
+    graph_candidates: list[SearchResult],
+    graph: dict[str, dict[str, float]],
+    support: dict[str, float],
+) -> list[dict[str, float | str]]:
+    """Describe why final chunks were selected by linked-evidence ranking.
+
+    Args:
+        doc_ids: Final ranked document ids.
+        graph_candidates: Candidates admitted to the local evidence graph.
+        graph: Weighted adjacency mapping over graph candidates.
+        support: Weighted graph degree by document id.
+
+    Returns:
+        Final chunk ranking records with normalized linked-rank components.
+    """
+    candidate_ids = [candidate.id for candidate in graph_candidates]
+    anchors = candidate_ids[:4]
+    query_score = normalize_feature(
+        {candidate.id: candidate.score for candidate in graph_candidates}
+    )
+    support_score = normalize_feature(support)
+    anchor_affinity = normalize_feature(
+        {
+            doc_id: max(
+                (graph.get(doc_id, {}).get(anchor, 0.0) for anchor in anchors),
+                default=0.0,
+            )
+            for doc_id in candidate_ids
+        }
+    )
+    records = []
+    for rank, doc_id in enumerate(doc_ids, start=1):
+        is_anchor = doc_id in anchors
+        linked_score = (
+            1.0
+            if is_anchor
+            else (
+                0.50 * query_score.get(doc_id, 0.0)
+                + 0.35 * anchor_affinity.get(doc_id, 0.0)
+                + 0.15 * support_score.get(doc_id, 0.0)
+            )
+        )
+        records.append(
+            {
+                "id": doc_id,
+                "rank": rank,
+                "is_anchor": is_anchor,
+                "query_score": float(query_score.get(doc_id, 0.0)),
+                "anchor_affinity": float(anchor_affinity.get(doc_id, 0.0)),
+                "support_score": float(support_score.get(doc_id, 0.0)),
+                "support": float(support.get(doc_id, 0.0)),
+                "rank_score": float(linked_score),
+            }
+        )
+    return records
 
 
 def target_fraction(

@@ -319,6 +319,25 @@ samp {
   margin-top: 18px;
 }
 
+.noetic-page .figure-panel {
+  padding: 16px;
+}
+
+.noetic-page .figure-panel h2,
+.noetic-page .figure-panel p {
+  padding: 0 6px;
+}
+
+.noetic-page .figure-panel img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+}
+
 .noetic-page .surface-list {
   display: grid;
   gap: 10px;

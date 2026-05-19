@@ -1,4 +1,4 @@
-"""Integration tests for the full Noetic Systems pipeline."""
+"""Integration tests for the full Noetic Search pipeline."""
 
 import json
 import unittest

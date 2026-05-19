@@ -1,12 +1,18 @@
 <div class="noetic-page trace-viewer">
   <section class="hero compact">
-    <p class="eyebrow">Trace viewer</p>
-    <h1>Watch one benchmark query move through Noetic Search.</h1>
+    <p class="eyebrow">Production trace</p>
+    <h1>Watch a real HotpotQA win move through Noetic Search.</h1>
     <p>
-      Generate the default multi-basin trace with
-      <code>uv run noetic trace</code>, then serve the docs. The browser renders
-      the actual candidate field, graph edges, spectral basins, diffusion
-      energy, basin scores, and final returned chunks.
+      Generate the production trace with <code>uv run noetic trace</code>, then
+      serve the docs. The browser renders
+      the actual candidate field, graph edges, and linked-evidence return used
+      by the benchmarked production path.
+    </p>
+    <p>
+      This case asks: <strong>The director of the romantic comedy "Big Stone Gap"
+      is based in what New York city?</strong> Hybrid top-5 finds the film
+      paragraph but misses the director paragraph. Noetic linked top-5 returns
+      both support paragraphs.
     </p>
   </section>
 
@@ -18,7 +24,7 @@
       class="trace-slider"
       type="range"
       min="0"
-      max="7"
+      max="4"
       value="0"
       step="1"
       aria-label="Trace step"
@@ -30,7 +36,7 @@
     <div class="trace-stage">
       <div class="trace-stage-head">
         <div>
-          <p id="traceKicker" class="trace-kicker">1 / 8</p>
+          <p id="traceKicker" class="trace-kicker">1 / 5</p>
           <h2 id="traceStageTitle">Corpus field</h2>
           <p id="traceQuery" class="trace-query">Query loading</p>
         </div>
@@ -52,20 +58,6 @@
           <button id="traceZoomIn" class="trace-zoom-button" type="button" aria-label="Zoom in">+</button>
           <button id="traceZoomReset" class="trace-zoom-reset" type="button">Reset</button>
           <span id="traceZoomReadout" class="trace-zoom-readout">100%</span>
-        </div>
-        <div id="traceDiffusionControls" class="trace-diffusion-controls" aria-label="Diffusion time step">
-          <button id="traceDiffusionPlay" class="trace-diffusion-button" type="button">Pause</button>
-          <input
-            id="traceDiffusionSlider"
-            class="trace-diffusion-slider"
-            type="range"
-            min="0"
-            max="4"
-            value="0"
-            step="1"
-            aria-label="Diffusion time step"
-          />
-          <span id="traceDiffusionReadout" class="trace-diffusion-readout">t=0</span>
         </div>
         <canvas id="traceCanvas" width="1200" height="760"></canvas>
         <div id="traceTooltip" class="trace-tooltip" role="status"></div>
@@ -95,8 +87,9 @@
         <p class="eyebrow">3. Graph</p>
         <h2>Connect admitted candidates with weighted evidence edges.</h2>
         <p>
-          The graph is built from embedding similarity and near-duplicate signal.
-          Metadata remains payload only; it does not create graph edges.
+          The graph is built from embedding similarity, lexical salience,
+          explicit cross-reference, and near-duplicate signal. Metadata remains
+          payload only; it does not create graph edges.
         </p>
         <p>
           Some admitted candidates may have no visible edge. That means hybrid
@@ -104,95 +97,43 @@
           graph threshold.
         </p>
       </article>
-      <article class="trace-step" data-step="spectral">
-        <p class="eyebrow">4. Spectral Basins</p>
-        <h2>Use the normalized Laplacian and Fiedler split.</h2>
+      <article class="trace-step" data-step="linked">
+        <p class="eyebrow">4. Linked Evidence</p>
+        <h2>Rank the return set from graph-connected support.</h2>
         <p>
-          Spectral detection proposes fixed basin boundaries. Diffusion will use
-          those assignments, not redraw them.
+          This is the benchmarked production step. The strongest hybrid anchors
+          are preserved, then graph-connected support chunks are promoted by
+          query score, anchor affinity, and local graph support.
         </p>
         <p>
-          In the default trace, the admitted candidates split into separate
-          basins because the Formula 1 query retrieves several coherent race
-          explanations at once.
-        </p>
-      </article>
-      <article class="trace-step" data-step="whole-diffusion">
-        <p class="eyebrow">5. Whole-Graph Diffusion</p>
-        <h2>Let retrieval energy move across the full graph.</h2>
-        <p>
-          This is a diagnostic step, not the scoring step.
-          This diagnostic runs after basin boundaries are known, but before
-          cross-basin edges are removed. It asks where the hybrid signal wants
-          to move if every graph edge is available.
-        </p>
-        <p>
-          Whole-graph diffusion can reveal attraction, leakage, or absorption
-          across the candidate field. If a lower-seed basin gains energy here,
-          that is evidence that the graph is pulling query signal toward it. If
-          the high-seed basin simply smears outward, the diagnostic says hybrid
-          gravity is still dominating.
-        </p>
-      </article>
-      <article class="trace-step" data-step="diffusion">
-        <p class="eyebrow">6. Basin-Constrained Diffusion</p>
-        <h2>Redistribute energy inside fixed basins.</h2>
-        <p>
-          This is the scoring diffusion path.
-          Point size follows absolute seeded energy at the captured diffusion
-          time step. Energy starts from hybrid rank and score, then moves
-          through same-basin graph relationships.
-        </p>
-        <p>
-          Because cross-basin edges are removed before diffusion, total basin
-          energy is conserved. Diffusion does not move basin 1's energy into
-          basin 0. It redistributes energy inside each fixed basin, which matters
-          for representative chunks and for seeing whether support concentrates
-          or stays scattered.
-        </p>
-        <p>
-          This step tests how the hybrid signal behaves after it meets the graph.
-          A high-rank chunk that is isolated stays thin. A lower-rank chunk can
-          become more important when neighboring chunks also support it. Unlike
-          whole-graph diffusion, this version keeps the basin competition fixed
-          so final scoring does not reward one basin for draining another.
-        </p>
-      </article>
-      <article class="trace-step" data-step="basins">
-        <p class="eyebrow">7. Basin Scoring</p>
-        <h2>Select the strongest evidence region.</h2>
-        <p>
-          The winning basin balances settled energy, support, cohesion, duplicate
-          pressure, and uncertainty.
-        </p>
-        <p>
-          The score is computed from the basin totals: settled energy, support,
-          internal cohesion, and duplicate pressure. The panel under the graphic
-          shows whether the winner was already the hybrid seed-energy winner or
-          whether graph structure changed the decision.
-        </p>
-        <p>
-          A lower-seed basin should only win when it clears a stricter standard:
-          enough query energy to remain relevant, strong internal cohesion,
-          non-duplicate support, and returned chunks that preserve the broader
-          explanation. Size alone is not a sufficient reason.
+          The point is not to let the graph replace retrieval. The graph
+          compresses a larger candidate pool into a smaller linked set that
+          still preserves the query anchors.
         </p>
       </article>
       <article class="trace-step" data-step="final">
-        <p class="eyebrow">8. Final Return</p>
-        <h2>Return compact representatives from the winning basin.</h2>
+        <p class="eyebrow">5. Final Return</p>
+        <h2>Return compact linked evidence.</h2>
         <p>
           These are the chunks that would be passed to the LLM through
-          <code>chunks()</code> or inspected through <code>strongest_basin()</code>.
+          <code>chunks()</code>.
         </p>
         <p>
-          Final return does not take one chunk from every basin. It takes the
-          most useful representatives from the winning basin after basin scoring.
+          Final return preserves strong hybrid anchors, then promotes candidates
+          connected to those anchors through the evidence graph.
         </p>
         <p>
-          The return set has to defend the basin decision. If the basin won
-          because it represents a broader answer, the returned chunks must cover
-          that answer rather than repeat one local pocket.
+          This is the benchmarked production path. It is selected by
+          linked-evidence ranking, not by diffusion or basin scoring.
+        </p>
+        <p>
+          The ranking score combines original query score, anchor affinity, and
+          graph support. Anchor affinity asks whether a candidate is strongly
+          connected to one of the preserved top hybrid anchors.
+        </p>
+        <p>
+          The diagnostics still exist in the codebase for research and
+          inspection, but they are not part of this production trace.
         </p>
       </article>
     </div>
@@ -223,7 +164,7 @@
 
   .trace-step-buttons {
     display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -368,58 +309,6 @@
     border-radius: 8px;
     background: rgba(255, 253, 248, 0.94);
     box-shadow: 0 10px 26px rgba(20, 24, 28, 0.08);
-  }
-
-  .trace-diffusion-controls {
-    position: absolute;
-    z-index: 2;
-    left: 24px;
-    bottom: 24px;
-    display: none;
-    grid-template-columns: auto minmax(120px, 180px) auto;
-    gap: 8px;
-    align-items: center;
-    padding: 7px;
-    border: 1px solid rgba(20, 24, 28, 0.12);
-    border-radius: 8px;
-    background: rgba(255, 253, 248, 0.94);
-    box-shadow: 0 10px 26px rgba(20, 24, 28, 0.08);
-  }
-
-  .trace-diffusion-controls.active {
-    display: grid;
-  }
-
-  .trace-diffusion-button {
-    min-height: 30px;
-    border: 1px solid rgba(20, 24, 28, 0.14);
-    border-radius: 6px;
-    background: #ffffff;
-    color: #16201d;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    padding: 0 10px;
-  }
-
-  .trace-diffusion-button:hover {
-    border-color: rgba(4, 120, 87, 0.42);
-    background: #e7f5ef;
-    color: #064e3b;
-  }
-
-  .trace-diffusion-slider {
-    width: 100%;
-    accent-color: #047857;
-  }
-
-  .trace-diffusion-readout {
-    min-width: 34px;
-    color: #4b514c;
-    font-size: 12px;
-    font-weight: 700;
-    text-align: right;
   }
 
   .trace-zoom-button,
@@ -627,11 +516,6 @@
       margin-bottom: 10px;
     }
 
-    .trace-diffusion-controls {
-      position: static;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      margin-bottom: 10px;
-    }
   }
 </style>
 
@@ -655,39 +539,28 @@
   const zoomResetButton = document.getElementById("traceZoomReset");
   const zoomSlider = document.getElementById("traceZoomSlider");
   const zoomReadout = document.getElementById("traceZoomReadout");
-  const diffusionControls = document.getElementById("traceDiffusionControls");
-  const diffusionPlayButton = document.getElementById("traceDiffusionPlay");
-  const diffusionSlider = document.getElementById("traceDiffusionSlider");
-  const diffusionReadout = document.getElementById("traceDiffusionReadout");
   const steps = [...document.querySelectorAll(".trace-step")];
   const state = {
     trace: null,
     step: "corpus",
     frame: 0,
     zoom: 1,
-    diffusionPaused: false,
     drawnPoints: [],
   };
   const colors = ["#2563eb", "#059669", "#b45309", "#7c3aed", "#dc2626", "#0891b2"];
-  const stepOrder = ["corpus", "hybrid", "graph", "spectral", "whole-diffusion", "diffusion", "basins", "final"];
+  const stepOrder = ["corpus", "hybrid", "graph", "linked", "final"];
   const stepTitles = {
     corpus: "Corpus field",
     hybrid: "Hybrid retrieval",
     graph: "Evidence graph",
-    "whole-diffusion": "Whole-graph diffusion",
-    spectral: "Spectral basins",
-    diffusion: "Basin diffusion",
-    basins: "Basin scoring",
+    linked: "Linked evidence return",
     final: "Final return",
   };
   const shortStepTitles = {
     corpus: "Corpus",
     hybrid: "Hybrid",
     graph: "Graph",
-    "whole-diffusion": "Whole Diff.",
-    spectral: "Spectral",
-    diffusion: "Basin Diff.",
-    basins: "Basins",
+    linked: "Linked",
     final: "Final",
   };
 
@@ -719,20 +592,12 @@
     zoomInButton.addEventListener("click", () => setZoom(state.zoom + 0.25));
     zoomResetButton.addEventListener("click", () => setZoom(1));
     zoomSlider.addEventListener("input", () => setZoom(Number(zoomSlider.value)));
-    diffusionSlider.addEventListener("input", () => {
-      state.diffusionPaused = true;
-      setDiffusionFrame(Number(diffusionSlider.value));
-    });
-    diffusionPlayButton.addEventListener("click", () => {
-      state.diffusionPaused = !state.diffusionPaused;
-      renderDiffusionControls();
-    });
     canvas.addEventListener("mousemove", updateTooltip);
     canvas.addEventListener("mouseleave", hideTooltip);
   }
 
   async function loadTrace() {
-    for (const path of ["../trace.json", "/trace.json", "trace.json"]) {
+    for (const path of ["../production_trace.json", "/production_trace.json", "production_trace.json"]) {
       try {
         const response = await fetch(path, { cache: "no-store" });
         if (response.ok) return response.json();
@@ -745,7 +610,7 @@
 
   function viewPoints(trace) {
     const points = trace.points.filter((point) => {
-      if (["graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
+      if (["graph", "linked", "final"].includes(state.step)) {
         return point.is_graph_candidate;
       }
       if (state.step === "hybrid") return point.is_candidate;
@@ -773,45 +638,25 @@
       const loc = fieldLocation(index, total);
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const basinSpreadStep = ["diffusion", "basins", "final"].includes(state.step);
-      let basinOffsetX = 0;
-      let basinOffsetY = 0;
-      if (basinSpreadStep && point.is_graph_candidate && point.community !== null && state.trace) {
-        const basinCount = Math.max(1, state.trace.basins.length);
-        const angle = (point.community / basinCount) * Math.PI * 2 - Math.PI / 2;
-        basinOffsetX = Math.cos(angle) * 230;
-        basinOffsetY = Math.sin(angle) * 172;
-      }
       return {
-        x: centerX + (loc.x + basinOffsetX - centerX) * state.zoom,
-        y: centerY + (loc.y + basinOffsetY - centerY) * state.zoom,
+        x: centerX + (loc.x - centerX) * state.zoom,
+        y: centerY + (loc.y - centerY) * state.zoom,
       };
     }
   }
 
   function pointRadius(point) {
-    if (state.step === "whole-diffusion") {
-      const step = Math.min(state.frame, point.whole_energy.length - 1);
-      return 3.5 + Math.sqrt((point.whole_energy[step] || 0) * 960);
-    }
-    if (state.step === "diffusion") {
-      const step = Math.min(state.frame, point.energy.length - 1);
-      return 3.5 + Math.sqrt((point.energy[step] || 0) * 960);
-    }
     if (state.step === "final" && point.is_final) return 9.5;
-    if (state.step === "basins" && point.is_winner) return 7.5;
-    if (point.is_graph_candidate && ["graph", "spectral"].includes(state.step)) return 5.5;
+    if (state.step === "linked" && point.is_final) return 8.5;
+    if (point.is_graph_candidate && ["graph", "linked"].includes(state.step)) return 5.5;
     if (point.is_candidate && state.step === "hybrid") return 5.5;
     return 3;
   }
 
   function pointColor(point) {
     if (state.step === "final" && point.is_final) return "#047857";
-    if (state.step === "basins" && point.is_winner) return "#047857";
-    if (["spectral", "whole-diffusion", "diffusion", "basins"].includes(state.step) && point.community !== null) {
-      return colors[Math.abs(point.community) % colors.length];
-    }
-    if (["hybrid", "graph", "whole-diffusion"].includes(state.step) && point.is_graph_candidate) return "#2563eb";
+    if (state.step === "linked" && point.is_final) return "#047857";
+    if (["hybrid", "graph", "linked"].includes(state.step) && point.is_graph_candidate) return "#2563eb";
     if (state.step === "hybrid" && point.is_candidate) return "#60a5fa";
     return "#a8a29e";
   }
@@ -820,15 +665,13 @@
     if (state.step === "corpus") return 0.58;
     if (state.step === "hybrid") return point.is_candidate ? 0.95 : 0.14;
     if (state.step === "graph") return point.is_graph_candidate ? 0.95 : 0.10;
-    if (["whole-diffusion", "spectral", "diffusion", "basins"].includes(state.step)) {
-      return point.is_graph_candidate ? 0.95 : 0.08;
-    }
-    if (state.step === "final") return point.is_final ? 1 : point.is_winner ? 0.32 : 0.07;
+    if (state.step === "linked") return point.is_final ? 1 : point.is_graph_candidate ? 0.32 : 0.07;
+    if (state.step === "final") return point.is_final ? 1 : point.is_graph_candidate ? 0.20 : 0.07;
     return 0.4;
   }
 
   function drawEdges(trace, locations) {
-    if (!["graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) return;
+    if (!["graph", "linked", "final"].includes(state.step)) return;
     const byId = new Map(trace.points.map((point) => [point.id, point]));
     ctx.save();
     for (const edge of trace.edges) {
@@ -837,7 +680,7 @@
       if (!a || !b) continue;
       const source = byId.get(edge.source);
       const target = byId.get(edge.target);
-      const basinSeparatedStep = ["diffusion", "basins", "final"].includes(state.step);
+      const basinSeparatedStep = false;
       if (
         basinSeparatedStep
         && source?.community !== null
@@ -846,8 +689,9 @@
       ) {
         continue;
       }
-      if (state.step === "final" && !(source?.is_winner && target?.is_winner)) continue;
-      ctx.globalAlpha = state.step === "graph" ? 0.26 : 0.15;
+      if (state.step === "final" && !(source?.is_final || target?.is_final)) continue;
+      if (state.step === "linked" && !(source?.is_final || target?.is_final)) continue;
+      ctx.globalAlpha = state.step === "graph" ? 0.26 : state.step === "linked" ? 0.24 : 0.15;
       ctx.strokeStyle = "#334155";
       ctx.lineWidth = 0.5 + edge.weight * 1.4;
       ctx.beginPath();
@@ -884,42 +728,10 @@
     ctx.restore();
   }
 
-  function drawCommunityLabels(trace, locations) {
-    if (!["spectral", "whole-diffusion", "diffusion", "basins", "final"].includes(state.step)) return;
-    const groups = new Map();
-    for (const point of trace.points) {
-      if (!point.is_graph_candidate || point.community === null) continue;
-      const loc = locations.get(point.id);
-      const group = groups.get(point.community) || { x: 0, y: 0, count: 0 };
-      group.x += loc.x;
-      group.y += loc.y;
-      group.count += 1;
-      groups.set(point.community, group);
-    }
-
-    ctx.save();
-    ctx.font = "600 17px system-ui, sans-serif";
-    ctx.textBaseline = "middle";
-    for (const [community, group] of groups.entries()) {
-      const text = `basin ${community}`;
-      const x = group.x / group.count;
-      const y = group.y / group.count;
-      const width = ctx.measureText(text).width + 22;
-      ctx.fillStyle = "rgba(255, 253, 248, 0.88)";
-      ctx.strokeStyle = "rgba(20, 24, 28, 0.12)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(x - width / 2, y - 44, width, 28, 6);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = colors[Math.abs(community) % colors.length];
-      ctx.fillText(text, x - width / 2 + 11, y - 30);
-    }
-    ctx.restore();
-  }
+  function drawCommunityLabels(trace, locations) {}
 
   function drawFinalLabels(trace, locations) {
-    if (state.step !== "final") return;
+    if (!["linked", "final"].includes(state.step)) return;
     const finals = trace.points.filter((point) => point.is_final);
     ctx.save();
     ctx.font = "700 15px system-ui, sans-serif";
@@ -950,11 +762,7 @@
       return;
     }
     traceQuery.innerHTML = `Query: <code>${escapeHtml(trace.case.query)}</code>`;
-    if (["whole-diffusion", "diffusion"].includes(state.step)) {
-      stageMetric.textContent = `time step ${state.frame} of ${trace.settings.diffusion_steps}`;
-    } else if (["spectral", "basins"].includes(state.step)) {
-      stageMetric.textContent = `${trace.basins.length} basin${trace.basins.length === 1 ? "" : "s"} detected`;
-    } else if (state.step === "final") {
+    if (["linked", "final"].includes(state.step)) {
       const finalCount = trace.points.filter((point) => point.is_final).length;
       stageMetric.textContent = `returned ${finalCount} chunks`;
     } else {
@@ -964,30 +772,18 @@
 
   function renderLegend(trace) {
     if (!trace) {
-      legend.textContent = "Generate docs/trace.json, then refresh this page.";
+      legend.textContent = "Generate docs/production_trace.json, then refresh this page.";
       return;
     }
     const chips = [["#a8a29e", "corpus field"]];
-    if (["hybrid", "graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
+    if (["hybrid", "graph", "linked", "final"].includes(state.step)) {
       chips.push(["#60a5fa", "hybrid top-k"]);
     }
-    if (["graph", "whole-diffusion", "spectral", "diffusion", "basins", "final"].includes(state.step)) {
+    if (["graph", "linked", "final"].includes(state.step)) {
       chips.push(["#2563eb", "graph candidates"]);
     }
-    if (["spectral", "whole-diffusion", "diffusion", "basins", "final"].includes(state.step)) {
-      chips.push(["#7c3aed", `${trace.basins.length} basin${trace.basins.length === 1 ? "" : "s"}`]);
-    }
-    if (["basins", "final"].includes(state.step)) {
-      chips.push(["#047857", `winner ${trace.winner.label}`]);
-    }
-    if (state.step === "whole-diffusion") {
-      chips.push(["#0f766e", "full graph energy"]);
-    }
-    if (state.step === "diffusion") {
-      chips.push(["#0f766e", "same-basin energy"]);
-    }
-    if (trace.case.target_ids.length > 0) {
-      chips.push(["#f59e0b", "target chunk"]);
+    if (["linked", "final"].includes(state.step)) {
+      chips.push(["#047857", "linked return"]);
     }
     legend.innerHTML = chips
       .map(([color, text]) => `<span class="trace-chip"><span class="trace-swatch" style="--trace-color:${color}"></span>${text}</span>`)
@@ -1004,98 +800,48 @@
   }
 
   function renderScorePanel(trace) {
-    if (!trace || !trace.basins.length || !["whole-diffusion", "basins", "final"].includes(state.step)) {
+    if (!trace || !["linked", "final"].includes(state.step)) {
       scorePanel.classList.remove("active");
       scorePanel.innerHTML = "";
       return;
     }
 
-    const winner = trace.basins[0];
-    if (state.step === "whole-diffusion") {
-      const flowCards = trace.basins.map((basin) => {
-        const delta = basin.whole_energy_delta || 0;
-        return `
-          <div class="trace-score-card ${delta > 0 ? "winner" : ""}">
-            <strong>${escapeHtml(basin.label)}</strong>
-            <span>seed energy ${formatNumber(basin.seed_energy || 0)}</span>
-            <span>whole-graph energy ${formatNumber(basin.whole_energy || 0)}</span>
-            <span>flow delta ${formatSignedNumber(delta)}</span>
-            <span>target fraction ${formatNumber(basin.target_fraction || 0)}</span>
-          </div>
-        `;
-      }).join("");
-
-      scorePanel.classList.add("active");
-      scorePanel.innerHTML = `
-        <h3>Diagnostic only: whole-graph diffusion</h3>
-        <p><strong>This panel does not choose the winner.</strong> It lets energy cross every graph edge so we can measure attraction, leakage, and absorption. Positive flow delta means a basin absorbed energy from the surrounding field; negative delta means it leaked energy into neighbors.</p>
-        <p>The next diffusion step removes cross-basin edges. That basin-constrained distribution is the one used for scoring.</p>
-        <div class="trace-score-grid">${flowCards}</div>
-      `;
-      return;
-    }
-
-    const formula = "score = 0.45*energy + 0.25*support + 0.20*cohesion - duplicate penalty";
-    const seedWinner = trace.metrics.hybrid_seed_winner || "unknown";
-    const seedCopy = seedWinner === winner.label
-      ? `${escapeHtml(winner.label)} was also the hybrid seed-energy winner. This trace is showing graph-based compression and representative selection, not a basin winner reversal.`
-      : `${escapeHtml(winner.label)} beat ${escapeHtml(seedWinner)}, the basin with the largest initial hybrid seed energy. That is only defensible if the winner is not merely larger, but structurally healthier.`;
-    const reversalCopy = seedWinner === winner.label
-      ? "No reversal is claimed here. Hybrid found the strongest region, and Noetic compresses it into representative chunks."
-      : "A reversal means hybrid gave another basin the head start. The winner must justify that reversal with enough seed energy to stay relevant, strong cohesion, non-duplicate support, and a final return that covers the fuller explanation.";
-    const basinCards = trace.basins.map((basin) => {
-      const supportScore = basin.support_component / 0.25;
-      const isWinner = basin.label === winner.label;
-      return `
-        <div class="trace-score-card ${isWinner ? "winner" : ""}">
-          <strong>${escapeHtml(basin.label)}${isWinner ? " selected" : ""}</strong>
-          <span>score ${formatNumber(basin.score)}</span>
-          <span>seed energy ${formatNumber(basin.seed_energy || 0)}</span>
-          <span>whole delta ${formatSignedNumber(basin.whole_energy_delta || 0)}</span>
-          <span>energy ${formatNumber(basin.energy)}</span>
-          <span>energy delta ${formatSignedNumber(basin.energy_delta || 0)}</span>
-          <span>score parts ${formatNumber(basin.energy_component || 0)} energy, ${formatNumber(basin.support_component || 0)} support, ${formatNumber(basin.cohesion_component || 0)} cohesion</span>
-          <span>support ${basin.support} chunks (${formatNumber(supportScore)})</span>
-          <span>cohesion ${formatNumber(basin.cohesion)}</span>
-          <span>duplicate penalty ${formatNumber(basin.duplicate_penalty)}</span>
-          <span>target fraction ${formatNumber(basin.target_fraction || 0)}</span>
-        </div>
-      `;
-    }).join("");
-
     const pointById = new Map(trace.points.map((point) => [point.id, point]));
-    const finalDocs = trace.winner.documents
-      .map((docId, index) => {
-        const text = pointById.get(docId)?.text || docId;
-        return `${index + 1}. <strong>${escapeHtml(docId)}</strong>: ${escapeHtml(text)}`;
+    const targetIds = new Set(trace.case.target_ids || []);
+    const hybridDocs = trace.points
+      .filter((point) => point.candidate_rank && point.candidate_rank <= 5)
+      .sort((left, right) => left.candidate_rank - right.candidate_rank)
+      .map((point) => {
+        const badge = targetIds.has(point.id) ? " <strong>support</strong>" : "";
+        return `${point.candidate_rank}. ${escapeHtml(point.text)}${badge}`;
       })
       .join("<br>");
-    const finalCopy = state.step === "final"
-      ? `<p>Final chunks come from ${escapeHtml(winner.label)} because it has the highest basin score. They should preserve why the basin won, not just be the five individually strongest chunks. Returned representatives:<br>${finalDocs}</p>`
-      : "";
+    const finalDocs = (trace.final_chunks || [])
+      .map((chunk) => {
+        const text = pointById.get(chunk.id)?.text || chunk.id;
+        const badge = targetIds.has(chunk.id) ? " <strong>support</strong>" : "";
+        const formula = chunk.is_anchor
+          ? "preserved hybrid anchor"
+          : `rank score ${formatNumber(chunk.rank_score)} = 0.50*query ${formatNumber(chunk.query_score)} + 0.35*anchor ${formatNumber(chunk.anchor_affinity)} + 0.15*support ${formatNumber(chunk.support_score)}`;
+        return `${chunk.rank}. ${escapeHtml(text)}${badge}<br><span>${formula}; raw support ${formatNumber(chunk.support)}</span>`;
+      })
+      .join("<br>");
+    const hybridTargetCount = trace.points
+      .filter((point) => point.candidate_rank && point.candidate_rank <= 5 && targetIds.has(point.id))
+      .length;
+    const finalTargetCount = (trace.final_chunks || [])
+      .filter((chunk) => targetIds.has(chunk.id))
+      .length;
 
     scorePanel.classList.add("active");
     scorePanel.innerHTML = `
-      <h3>Why ${escapeHtml(winner.label)} wins</h3>
-      <p>${formula}</p>
-      <p><strong>Scoring path:</strong> These values use basin-constrained diffusion, where cross-basin edges have been removed. Whole-graph flow delta is shown as context, not as the final scoring energy.</p>
-      <p><strong>Hybrid check:</strong> ${seedCopy}</p>
-      <p><strong>Reversal standard:</strong> ${reversalCopy}</p>
-      <div class="trace-score-grid">${basinCards}</div>
-      ${finalCopy}
+      <h3>${state.step === "linked" ? "Production path: linked evidence" : "Final production return"}</h3>
+      <p><strong>HotpotQA support recovery:</strong> hybrid top-5 returns ${hybridTargetCount} of ${targetIds.size} support paragraphs; Noetic linked top-5 returns ${finalTargetCount} of ${targetIds.size}.</p>
+      <p><strong>This is the default return path.</strong> It starts from a high-recall hybrid candidate set, preserves the strongest hybrid anchors, and then promotes chunks that are strongly connected to those anchors in the evidence graph.</p>
+      <p>The ranking score combines original query score, anchor affinity, and graph support. Anchor affinity means a candidate is connected to one of the preserved top hybrid anchors. Graph support means the candidate has enough weighted relationships inside the admitted graph to act as useful context rather than an isolated hit.</p>
+      <p>Hybrid top-5:<br>${hybridDocs}</p>
+      <p>Returned linked evidence:<br>${finalDocs}</p>
     `;
-  }
-
-  function renderDiffusionControls() {
-    if (!state.trace || !["whole-diffusion", "diffusion"].includes(state.step)) {
-      diffusionControls.classList.remove("active");
-      return;
-    }
-    diffusionSlider.max = String(state.trace.settings.diffusion_steps);
-    diffusionSlider.value = String(state.frame);
-    diffusionReadout.textContent = `t=${state.frame}`;
-    diffusionPlayButton.textContent = state.diffusionPaused ? "Play" : "Pause";
-    diffusionControls.classList.add("active");
   }
 
   function escapeHtml(value) {
@@ -1153,12 +899,6 @@
     draw();
   }
 
-  function setDiffusionFrame(value) {
-    const maxFrame = state.trace ? state.trace.settings.diffusion_steps : 0;
-    state.frame = Math.min(maxFrame, Math.max(0, value));
-    draw();
-  }
-
   function draw() {
     const trace = state.trace;
     renderHeader(trace);
@@ -1168,7 +908,7 @@
     if (!trace) {
       ctx.fillStyle = "#1f2933";
       ctx.font = "24px system-ui, sans-serif";
-      ctx.fillText("No trace.json found.", 56, 86);
+      ctx.fillText("No production_trace.json found.", 56, 86);
       ctx.font = "16px system-ui, sans-serif";
       ctx.fillText("Run: uv run noetic trace", 56, 122);
       renderLegend(trace);
@@ -1196,12 +936,6 @@
       ctx.beginPath();
       ctx.arc(loc.x, loc.y, radius, 0, Math.PI * 2);
       ctx.fill();
-      if (point.is_target && ["basins", "final"].includes(state.step)) {
-        ctx.globalAlpha = 1;
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#f59e0b";
-        ctx.stroke();
-      }
       ctx.restore();
       drawnPoints.push({ point, x: loc.x, y: loc.y, radius });
     }
@@ -1209,7 +943,6 @@
     drawFinalLabels(trace, locations);
     renderLegend(trace);
     renderScorePanel(trace);
-    renderDiffusionControls();
   }
 
   function updateStep(step) {
@@ -1218,9 +951,6 @@
     slider.value = String(index);
     prevButton.disabled = index === 0;
     nextButton.disabled = index === stepOrder.length - 1;
-    if (!["whole-diffusion", "diffusion"].includes(step)) {
-      state.diffusionPaused = false;
-    }
     steps.forEach((item) => item.classList.toggle("active", item.dataset.step === step));
     stepButtons
       .querySelectorAll("button")
@@ -1231,12 +961,6 @@
       });
     draw();
   }
-
-  setInterval(() => {
-    if (["whole-diffusion", "diffusion"].includes(state.step) && state.trace && !state.diffusionPaused) {
-      setDiffusionFrame((state.frame + 1) % (state.trace.settings.diffusion_steps + 1));
-    }
-  }, 1300);
 
   buildControls();
   setZoom(1);

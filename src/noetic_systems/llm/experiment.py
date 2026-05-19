@@ -89,6 +89,7 @@ def build_llm_experiment(
         query,
         candidate_limit=candidate_limit,
         result_limit=result_limit,
+        include_diagnostics=True,
     )
     evidence_field = result.evidence_field(max_basins=4)
     strongest_basin = result.strongest_basin(database, k=chunk_limit)

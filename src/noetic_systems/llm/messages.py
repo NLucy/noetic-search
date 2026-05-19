@@ -15,6 +15,9 @@ class Message(Protocol):
     def to_response_input(self) -> dict[str, Any]:
         """Return this message as a Responses API input item.
 
+        Args:
+            None.
+
         Returns:
             Dictionary accepted in a Responses API `input` list.
         """
@@ -35,6 +38,9 @@ class TextMessage:
 
     def to_response_input(self) -> dict[str, Any]:
         """Return this text message as a Responses API input item.
+
+        Args:
+            None.
 
         Returns:
             Dictionary with `type`, `role`, and text `content` fields.
@@ -97,6 +103,9 @@ class ToolMessage:
 
     def to_response_input(self) -> dict[str, Any]:
         """Return this tool output as a Responses API input item.
+
+        Args:
+            None.
 
         Returns:
             Function-call output dictionary.

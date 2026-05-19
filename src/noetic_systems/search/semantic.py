@@ -1,4 +1,16 @@
-"""Semantic search using ChromaDB vector similarity."""
+"""ChromaDB semantic first-stage retrieval.
+
+Semantic search supplies the vector half of hybrid retrieval. ChromaDB embeds
+the query, compares it against stored document embeddings, and returns nearest
+neighbors. This module converts ChromaDB cosine distances into larger-is-better
+similarity scores so downstream retrieval code can combine them with BM25.
+
+Key variables:
+    `query`: Natural-language search request.
+    `limit`: Number of semantic neighbors requested.
+    `where`: Optional metadata equality filter.
+    `score`: Converted similarity value, `1 - distance`.
+"""
 
 from __future__ import annotations
 
@@ -66,8 +78,8 @@ class SemanticSearch:
 
         search_results = []
         for i in range(len(results["ids"][0])):
-            # ChromaDB returns distances (lower is better for cosine)
-            # Convert to similarity score (higher is better)
+            # ChromaDB returns cosine distances. Downstream ranking expects
+            # larger-is-better scores, so convert distance to similarity.
             distance = results["distances"][0][i]
             score = 1.0 - distance
 

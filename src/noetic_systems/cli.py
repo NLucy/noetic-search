@@ -5,16 +5,20 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import cast
 
 from noetic_systems.corpus import demo_corpus
 from noetic_systems.database import Database
-from noetic_systems.llm.experiment import build_llm_experiment
+from noetic_systems.llm.experiment import Mode, build_llm_experiment
 from noetic_systems.llm.openai_client import OpenAIResponsesClient
+from noetic_systems.reconciliation.calibration import GRAPH_OBJECTIVES
 from noetic_systems.reconciliation.engine import Reconciler
+from noetic_systems.reconciliation.graph import GraphWeights
 from noetic_systems.trace import (
+    DEFAULT_TRACE_CASE_ID,
+    DEFAULT_TRACE_DATA_PATH,
     DEFAULT_TRACE_EDGE_THRESHOLD,
     DEFAULT_TRACE_PATH,
-    MULTI_BASIN_TRACE_CASE_ID,
     generate_trace,
 )
 
@@ -30,6 +34,9 @@ QUERIES = {
 def main() -> None:
     """Parse command-line arguments and dispatch the selected command.
 
+    Args:
+        None.
+
     Returns:
         None.
     """
@@ -42,6 +49,11 @@ def main() -> None:
         choices=sorted(QUERIES),
         default="battery",
         help="demo query to run through retrieval and reconciliation",
+    )
+    demo.add_argument(
+        "--diagnostics",
+        action="store_true",
+        help="show the spectral/diffusion diagnostic path instead of linked chunks",
     )
 
     llm_demo = subparsers.add_parser("llm-demo")
@@ -71,16 +83,16 @@ def main() -> None:
     trace = subparsers.add_parser("trace")
     trace.add_argument(
         "--case",
-        default=MULTI_BASIN_TRACE_CASE_ID,
+        default=DEFAULT_TRACE_CASE_ID,
         help=(
-            "trace case id to visualize; the default is a built-in multi-basin "
-            "teaching case"
+            "trace case id to visualize; the default is the HotpotQA Big Stone "
+            "Gap case."
         ),
     )
     trace.add_argument(
         "--data-path",
         type=Path,
-        default=Path("tests/data/hard_rag_benchmark.json"),
+        default=DEFAULT_TRACE_DATA_PATH,
         help="hard benchmark JSON path",
     )
     trace.add_argument(
@@ -124,21 +136,40 @@ def main() -> None:
         action="store_true",
         help="index benchmark labels instead of blind deployable metadata",
     )
+    trace.add_argument(
+        "--calibrate-graph",
+        action="store_true",
+        help="derive corpus-level graph weights before generating the trace",
+    )
+    trace.add_argument(
+        "--graph-objective",
+        choices=GRAPH_OBJECTIVES,
+        default="reference_forward",
+        help="label-free objective used with --calibrate-graph",
+    )
+    trace.add_argument(
+        "--calibration-sample",
+        type=int,
+        default=500,
+        help="documents sampled for corpus-level graph calibration",
+    )
 
     args = parser.parse_args()
     if args.command == "demo":
-        run_demo(args.query)
+        run_demo(args.query, args.diagnostics)
     elif args.command == "llm-demo":
         run_llm_demo(args.query, args.mode, args.call_api, args.model)
     elif args.command == "trace":
         run_trace(args)
 
 
-def run_demo(query_name: str) -> None:
+def run_demo(query_name: str, diagnostics: bool) -> None:
     """Run the local reconciliation demo for a named query.
 
     Args:
         query_name: Key from `QUERIES` identifying the demo query.
+        diagnostics: Whether to show basin diagnostics instead of production
+            linked chunks.
 
     Returns:
         None.
@@ -147,9 +178,31 @@ def run_demo(query_name: str) -> None:
 
     database = Database(collection_name="noetic_demo", reset=True)
     database.add_documents(demo_corpus())
-    result = Reconciler(database).reconcile(query_text, candidate_limit=7, result_limit=7)
+    demo_weights = GraphWeights(
+        semantic_threshold=0.30,
+        lexical_threshold=0.01,
+        lexical_weight=0.35,
+    )
+    result = Reconciler(database, graph_weights=demo_weights).reconcile(
+        query_text,
+        candidate_limit=7,
+        result_limit=7,
+        include_diagnostics=diagnostics,
+    )
 
     print(f"query: {result.query}")
+    print(f"return policy: {result.return_policy}")
+    if not diagnostics:
+        print()
+        print("linked chunks:")
+        for index, chunk in enumerate(result.chunks(database, k=5), start=1):
+            print(
+                f"{index}. {chunk['id']} "
+                f"(query={chunk['query_score']:.3f}, support={chunk['support']:.3f})"
+            )
+        database.reset()
+        return
+
     print(f"winning basin: {result.winner.label} ({result.winner.score:.3f})")
     print(f"basin energy: {result.winner.energy:.3f}")
     print(f"uncertainty: {result.uncertainty:.3f}")
@@ -186,6 +239,9 @@ def run_trace(args: argparse.Namespace) -> None:
         result_limit=args.result_limit,
         diffusion_steps=args.diffusion_steps,
         edge_threshold=args.edge_threshold,
+        calibrate_graph=args.calibrate_graph,
+        graph_objective=args.graph_objective,
+        calibration_sample=args.calibration_sample,
     )
     print(f"wrote trace: {args.output}")
     print(f"case: {trace['case']['id']}")
@@ -224,7 +280,7 @@ def run_llm_demo(
         result_limit=7,
     )
     client = OpenAIResponsesClient(model=model) if model else OpenAIResponsesClient()
-    messages = experiment.messages_for(mode)  # type: ignore[arg-type]
+    messages = experiment.messages_for(cast(Mode, mode))
     payload = client.request_payload(messages)
 
     if call_api:

@@ -1,4 +1,18 @@
-"""ChromaDB storage wrapper."""
+"""ChromaDB storage wrapper for retrieval experiments and demos.
+
+The database layer deliberately stays small. It owns collection creation,
+document insertion, JSON fixture loading, and id-based lookup. Search,
+reconciliation, and evaluation modules should treat it as storage rather than
+place retrieval policy here.
+
+Key variables:
+    `collection_name`: ChromaDB collection opened by the wrapper.
+    `persist_directory`: Optional directory for persistent local storage. When
+        omitted, ChromaDB uses an in-memory client.
+    `reset`: Whether to delete an existing collection before opening it. This is
+        useful for deterministic demos, benchmarks, and tests.
+    `batch_size`: Number of documents inserted per ChromaDB add call.
+"""
 
 from __future__ import annotations
 
@@ -44,6 +58,8 @@ class Database:
             try:
                 self.client.delete_collection(name=collection_name)
             except Exception:
+                # Chroma raises when the collection does not exist; reset should
+                # remain idempotent for tests and throwaway benchmark runs.
                 pass
 
         self.collection = self.client.get_or_create_collection(
@@ -97,6 +113,9 @@ class Database:
     def count(self) -> int:
         """Return the number of documents in the collection.
 
+        Args:
+            None.
+
         Returns:
             Number of stored documents.
         """
@@ -104,6 +123,9 @@ class Database:
 
     def get_all_ids(self) -> list[str]:
         """Return all document IDs in the collection.
+
+        Args:
+            None.
 
         Returns:
             Stored document identifiers.
@@ -135,11 +157,15 @@ class Database:
     def reset(self) -> None:
         """Delete all documents from the collection.
 
+        Args:
+            None.
+
         Returns:
             None.
         """
-        self.client.delete_collection(name=self.collection.name)
+        collection_name = self.collection.name
+        self.client.delete_collection(name=collection_name)
         self.collection = self.client.get_or_create_collection(
-            name=self.collection.name,
+            name=collection_name,
             metadata={"hnsw:space": "cosine"},
         )
