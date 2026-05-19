@@ -68,6 +68,8 @@ degree inside the local candidate graph.
 
 Focused ablations show the main signal:
 
+![Hybrid versus Noetic auto support recall](docs/assets/benchmark_summary.svg)
+
 ```text
 variant                 mean recall across @5/@10
 hybrid                  0.738
