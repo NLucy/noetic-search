@@ -25,7 +25,7 @@
   -> measure pairwise signals
   -> score candidate graph formulas
   -> freeze GraphWeights
-  -> query-time linked retrieval</pre>
+  -> query-time final chunk scoring</pre>
   </section>
 
   <section class="panel">
@@ -203,11 +203,11 @@ bridge_safety_score:
       as a reasonable baseline, not as a final formula.
     </p>
     <p>
-      The linked-production ablation is the stronger source-of-lift evidence:
-      static linked ranking and auto linked ranking both beat hybrid, while
-      support-only graph ranking performs poorly. That means calibration should
-      be presented as a configuration layer over the mechanism, not as the
-      mechanism itself.
+      The production ablation is the stronger source-of-lift evidence: Noetic
+      with static graph weights and Noetic with auto graph weights both beat
+      hybrid, while support-only graph ranking performs poorly. That means
+      calibration should be presented as a configuration layer over the
+      mechanism, not as the mechanism itself.
     </p>
   </section>
 
@@ -251,10 +251,10 @@ cross_reference_weight     0.55
 near_duplicate_threshold   0.86
 near_duplicate_weight      0.05</pre>
     <p>
-      These values allow the package to run without calibration. The linked
+      These values allow the package to run without calibration. The production
       ablation shows they already improve over hybrid, which is useful because
-      it reduces dependence on tuning. The stronger production recommendation is
-      still to derive corpus-native weights with <code>objective="auto"</code>
+      it reduces dependence on tuning. The stronger production recommendation
+      is still to derive corpus-native weights with <code>objective="auto"</code>
       when a stable corpus is available.
     </p>
   </section>

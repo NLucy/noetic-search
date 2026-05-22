@@ -53,18 +53,20 @@ Edges use ordinary retrieval signals:
 - explicit text-to-title cross-reference;
 - near-duplicate pressure.
 
-The linked ranker scores non-anchor candidates as:
+The production ranker gives each non-anchor candidate a final chunk score:
 
 ```text
-linked_score =
+final_chunk_score =
   0.50 * query_score
 + 0.35 * anchor_affinity
 + 0.15 * graph_support
 ```
 
-`query_score` is the original hybrid score. `anchor_affinity` is the strongest
-graph edge to a preserved hybrid anchor. `graph_support` is normalized weighted
-degree inside the local candidate graph.
+`query_score` is the chunk's original hybrid score against the query.
+`anchor_affinity` is the chunk's strongest graph edge to a preserved hybrid
+anchor. `graph_support` is the chunk's normalized weighted degree inside the
+local candidate graph. Anchors are preserved first; the highest-scoring
+remaining chunks fill the compact return.
 
 ## Result
 
@@ -124,9 +126,10 @@ Reports are written under `reports/`, which is gitignored.
 The MkDocs site is the main learning surface:
 
 - Overview
-- The Math
-- Evidence Graph
+- Candidate Selection
+- Graph Creation
 - Auto Calibration
+- Final Selection
 - Spectral Diffusion
 - Production Trace
 - Diagnostic Trace

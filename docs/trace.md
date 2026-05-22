@@ -822,7 +822,7 @@
         const badge = targetIds.has(chunk.id) ? " <strong>support</strong>" : "";
         const formula = chunk.is_anchor
           ? "preserved hybrid anchor"
-          : `rank score ${formatNumber(chunk.rank_score)} = 0.50*query ${formatNumber(chunk.query_score)} + 0.35*anchor ${formatNumber(chunk.anchor_affinity)} + 0.15*support ${formatNumber(chunk.support_score)}`;
+          : `final chunk score ${formatNumber(chunk.rank_score)} = 0.50*query ${formatNumber(chunk.query_score)} + 0.35*anchor ${formatNumber(chunk.anchor_affinity)} + 0.15*support ${formatNumber(chunk.support_score)}`;
         return `${chunk.rank}. ${escapeHtml(text)}${badge}<br><span>${formula}; raw support ${formatNumber(chunk.support)}</span>`;
       })
       .join("<br>");
