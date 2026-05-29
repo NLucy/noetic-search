@@ -406,7 +406,6 @@ def resonance_ranked_ids(
     query: str,
     *,
     candidate_limit: int,
-    result_limit: int,
     edge_threshold: float,
     diffusion_steps: int = 10,
     damping: float = 0.85,
@@ -416,8 +415,8 @@ def resonance_ranked_ids(
     Args:
         reconciler: Configured reconciliation engine.
         query: Query text.
-        candidate_limit: Number of hybrid candidates to retrieve.
-        result_limit: Number of candidates retained for the local graph.
+        candidate_limit: Number of hybrid candidates retrieved and admitted into
+            the local graph.
         edge_threshold: Minimum embedding similarity for semantic edges.
         diffusion_steps: Number of diffusion time steps.
         damping: Fraction of energy allowed to move per diffusion step.
@@ -425,8 +424,11 @@ def resonance_ranked_ids(
     Returns:
         Ranked document ids from the strongest resonance basin.
     """
-    candidates = reconciler.hybrid.search(query, limit=candidate_limit)
-    graph_candidates = candidates[:result_limit]
+    graph_candidates = reconciler.hybrid.search(
+        query,
+        limit=candidate_limit,
+        pool_limit=100,
+    )
     if not graph_candidates:
         return []
 
@@ -609,7 +611,6 @@ def case_graph_diagnostics(
     query: str,
     *,
     candidate_limit: int,
-    result_limit: int,
     edge_threshold: float,
     diffusion_steps: int = 10,
     damping: float = 0.85,
@@ -619,8 +620,8 @@ def case_graph_diagnostics(
     Args:
         reconciler: Configured reconciliation engine.
         query: Query text.
-        candidate_limit: Number of hybrid candidates to retrieve.
-        result_limit: Number of candidates retained for the local graph.
+        candidate_limit: Number of hybrid candidates retrieved and admitted into
+            the local graph.
         edge_threshold: Minimum embedding similarity for semantic edges.
         diffusion_steps: Number of diffusion time steps.
         damping: Fraction of energy allowed to move per diffusion step.
@@ -628,8 +629,11 @@ def case_graph_diagnostics(
     Returns:
         Graph candidates, channels, communities, energy, and resonance ranking.
     """
-    candidates = reconciler.hybrid.search(query, limit=candidate_limit)
-    graph_candidates = candidates[:result_limit]
+    graph_candidates = reconciler.hybrid.search(
+        query,
+        limit=candidate_limit,
+        pool_limit=100,
+    )
     doc_index = {result.id: result for result in graph_candidates}
     base_graph, edges = build_evidence_graph(
         reconciler.database,
@@ -977,8 +981,7 @@ def main() -> None:
     )
     parser.add_argument("--collection-name", default="clinical_evidence_eval")
     parser.add_argument("--blind", action="store_true")
-    parser.add_argument("--candidate-limit", type=int, default=50)
-    parser.add_argument("--result-limit", type=int, default=30)
+    parser.add_argument("--candidate-limit", type=int, default=30)
     parser.add_argument("--edge-threshold", type=float, default=0.5)
     parser.add_argument("--ks", type=parse_k_values, default=list(DEFAULT_K_VALUES))
     parser.add_argument("--limit-cases", type=int, default=None)
@@ -1048,13 +1051,11 @@ def main() -> None:
         linked_result = reconciler.reconcile(
             query,
             candidate_limit=args.candidate_limit,
-            result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
         )
         diffusion_result = reconciler.reconcile(
             query,
             candidate_limit=args.candidate_limit,
-            result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
             return_policy="basin",
         )
@@ -1065,7 +1066,6 @@ def main() -> None:
             reconciler,
             query,
             candidate_limit=args.candidate_limit,
-            result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
         )
         resonance_ids = diagnostics["resonance_ids"][:max_k]
@@ -1262,7 +1262,6 @@ def main() -> None:
         "cases": total,
         "documents": len(data["corpus"]),
         "candidate_limit": args.candidate_limit,
-        "result_limit": args.result_limit,
         "edge_threshold": args.edge_threshold,
         "calibrate_graph": args.calibrate_graph,
         "graph_objective": args.graph_objective,
@@ -1299,7 +1298,7 @@ def main() -> None:
     print("=== CLINICAL EVIDENCE RETRIEVAL BENCHMARK ===")
     print(f"cases: {total}")
     print(f"documents: {len(data['corpus'])}")
-    print(f"candidate/result limit: {args.candidate_limit}/{args.result_limit}")
+    print(f"candidate limit: {args.candidate_limit}")
     print(f"edge threshold: {args.edge_threshold:.2f}")
     print(f"calibrate graph: {args.calibrate_graph}")
     print()

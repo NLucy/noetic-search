@@ -13,14 +13,15 @@
     <h2>Each non-anchor candidate receives a final chunk score.</h2>
     <p>
       The score has three terms: direct query match, strongest edge to an anchor,
-      and overall graph support.
+      and overall graph support. The default top-5 policy protects 3 hybrid
+      anchors, leaving 2 compact-return slots for graph-promoted support.
     </p>
     <pre>final_chunk_score =
   0.50 * query_score
 + 0.35 * anchor_affinity
 + 0.15 * graph_support
 
-top_5 = anchors + highest final_chunk_score chunks</pre>
+top_5 = 3 protected anchors + 2 highest final_chunk_score chunks</pre>
     <div class="symbols">
       <div><code>final_chunk_score</code><span>The score used to decide which non-anchor chunks enter the compact return.</span></div>
       <div><code>query_score</code><span>Normalized first-stage hybrid score: how well this chunk directly matched the query.</span></div>
@@ -58,34 +59,33 @@ top_5 = anchors + highest final_chunk_score chunks</pre>
     <p class="eyebrow">Ablation</p>
     <h2>The useful signal is anchor-linked promotion.</h2>
     <p>
-      The focused ablation uses 100 validation cases each from HotpotQA,
-      2WikiMultiHopQA, and MuSiQue. It tests which scoring terms matter.
+      The focused ablation uses validation cases from HotpotQA,
+      2WikiMultiHopQA, and MuSiQue. It tests whether anchors should be
+      protected and how many anchors are useful.
     </p>
-    <pre>variant                       mean recall across @5/@10
-Hybrid baseline               0.738
-Noetic static weights         0.777
-Noetic auto weights           0.783
-Anchors only                  0.738
-No anchor-link term           0.756
-Anchor-link only              0.780
-Graph support only            0.501
-Semantic edges only           0.743
-Lexical edges only            0.742</pre>
+    <pre>variant                       mean R@5 across datasets
+Hybrid baseline               0.687
+3 protected anchors           0.723
+4 protected anchors           0.720
+2 protected anchors           0.718
+Open 3-anchor ranking         0.686
+
+variant                       mean R@10 across datasets
+Hybrid baseline               0.780
+3 protected anchors           0.804
+4 protected anchors           0.806
+5 protected anchors           0.807</pre>
     <div class="symbols">
       <div><code>Hybrid baseline</code><span>Raw hybrid ranking, with no Noetic graph reconciliation.</span></div>
-      <div><code>Noetic static weights</code><span>Production final chunk scoring with fixed default graph weights.</span></div>
-      <div><code>Noetic auto weights</code><span>Production final chunk scoring with graph weights calibrated from the corpus before query time.</span></div>
-      <div><code>Anchors only</code><span>Return only the preserved top hybrid anchors; tests whether Noetic is merely copying the original top hits.</span></div>
-      <div><code>No anchor-link term</code><span>Remove the term that rewards a chunk for connecting to a preserved anchor.</span></div>
-      <div><code>Anchor-link only</code><span>Rank candidates only by their strongest graph edge to a preserved hybrid anchor.</span></div>
-      <div><code>Graph support only</code><span>Rank candidates only by weighted graph degree; tests broad graph centrality by itself.</span></div>
-      <div><code>Semantic edges only</code><span>Build graph edges from embedding similarity only.</span></div>
-      <div><code>Lexical edges only</code><span>Build graph edges from lexical salience overlap only.</span></div>
+      <div><code>Protected anchors</code><span>Keep the strongest hybrid candidates at the front, then fill remaining slots with graph-ranked support.</span></div>
+      <div><code>Open ranking</code><span>Use anchors to define affinity, but allow every chunk to compete under the score formula. This usually hurts compact precision.</span></div>
+      <div><code>3 protected anchors</code><span>The strongest observed top-5 policy in the anchor-count sweep.</span></div>
     </div>
     <p class="say-it">
-      Anchors alone reproduce hybrid. Graph support alone performs poorly.
-      Removing the anchor-link term hurts. The measured lift comes from
-      promoting candidates connected to strong hybrid anchors.
+      Anchor protection is not cosmetic. Open graph ranking lets connected
+      chunks push out direct query matches and usually damages early precision.
+      The measured top-5 lift comes from protecting 3 direct hybrid anchors and
+      using the graph to choose 2 supporting chunks.
     </p>
   </section>
 

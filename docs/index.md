@@ -36,12 +36,12 @@
   <section class="panel figure-panel">
     <p class="eyebrow">Benchmark summary</p>
     <h2>Noetic improves compact support recall in the headline run.</h2>
-    <img src="assets/benchmark_summary.svg" alt="Bar chart comparing Hybrid and Noetic auto recall on HotpotQA, 2WikiMultiHopQA, and MuSiQue.">
+    <img src="assets/benchmark_summary.svg" alt="Bar chart comparing Hybrid and Noetic protected three-anchor recall on HotpotQA, 2WikiMultiHopQA, and MuSiQue.">
     <p>
-      On the benchmark summary, Noetic improved mean recall from
-      <code>0.738</code> to <code>0.783</code> across <code>@5/@10</code>: a
-      4.5 percentage-point absolute gain, or a 6.1% relative improvement over
-      hybrid.
+      On the benchmark summary, Noetic with 3 protected anchors improved mean
+      recall from <code>0.733</code> to <code>0.764</code> across
+      <code>@5/@10</code>: a 3.0 percentage-point absolute gain, or a 4.1%
+      relative improvement over hybrid.
     </p>
   </section>
 
@@ -49,20 +49,23 @@
     <p class="eyebrow">Ablation summary</p>
     <h2>The ablation supports the mechanism.</h2>
     <p>
-      The focused ablation uses 100 validation cases each from HotpotQA,
+      The focused ablation uses validation cases from HotpotQA,
       2WikiMultiHopQA, and MuSiQue. Anchors alone reproduce hybrid. Graph
-      support alone performs poorly. Removing the anchor-link term hurts.
+      support alone performs poorly. Open graph ranking hurts early precision.
+      Protected anchors improve compact recall.
     </p>
-    <pre>variant                       mean recall across @5/@10
-Hybrid baseline               0.738
-Noetic static weights         0.777
-Noetic auto weights           0.783
-Anchors only                  0.738
-No anchor-link term           0.756
-Anchor-link only              0.780
-Graph support only            0.501
-Semantic edges only           0.743
-Lexical edges only            0.742</pre>
+    <pre>variant                       mean R@5 across datasets
+Hybrid baseline               0.687
+3 protected anchors           0.723
+4 protected anchors           0.720
+2 protected anchors           0.718
+Open 3-anchor ranking         0.686
+
+variant                       mean R@10 across datasets
+Hybrid baseline               0.780
+3 protected anchors           0.804
+4 protected anchors           0.806
+5 protected anchors           0.807</pre>
     <p>
       The detailed story is split into the step pages below.
     </p>

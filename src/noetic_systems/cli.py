@@ -110,14 +110,14 @@ def main() -> None:
     trace.add_argument(
         "--candidate-limit",
         type=int,
-        default=50,
-        help="hybrid candidates to retrieve for the trace",
+        default=30,
+        help="hybrid candidates retrieved and admitted into the local graph",
     )
     trace.add_argument(
-        "--result-limit",
+        "--hybrid-pool-limit",
         type=int,
-        default=36,
-        help="candidates admitted into the local graph",
+        default=100,
+        help="semantic and lexical channel depth used before hybrid truncation",
     )
     trace.add_argument(
         "--diffusion-steps",
@@ -186,7 +186,6 @@ def run_demo(query_name: str, diagnostics: bool) -> None:
     result = Reconciler(database, graph_weights=demo_weights).reconcile(
         query_text,
         candidate_limit=7,
-        result_limit=7,
         include_diagnostics=diagnostics,
     )
 
@@ -236,7 +235,7 @@ def run_trace(args: argparse.Namespace) -> None:
         blind=not args.labeled,
         max_points=args.max_points,
         candidate_limit=args.candidate_limit,
-        result_limit=args.result_limit,
+        hybrid_pool_limit=args.hybrid_pool_limit,
         diffusion_steps=args.diffusion_steps,
         edge_threshold=args.edge_threshold,
         calibrate_graph=args.calibrate_graph,
@@ -277,7 +276,6 @@ def run_llm_demo(
         database,
         query_text,
         candidate_limit=7,
-        result_limit=7,
     )
     client = OpenAIResponsesClient(model=model) if model else OpenAIResponsesClient()
     messages = experiment.messages_for(cast(Mode, mode))

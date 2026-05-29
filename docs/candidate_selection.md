@@ -18,13 +18,14 @@
       stage. It uses the broad list as the material for graph reconciliation.
     </p>
     <pre>query
-  -> hybrid_search(query, k=50)
-  -> graph_candidates = first 30 candidates</pre>
+  -> hybrid_search(query, pool=100)
+  -> graph_candidates = top 30 hybrid results</pre>
     <div class="symbols">
       <div><code>query</code><span>The user's question or search request.</span></div>
       <div><code>hybrid_search</code><span>The first-stage retriever combining lexical and vector signals.</span></div>
-      <div><code>candidate_limit</code><span>Broad first-stage retrieval depth. The benchmark and trace commonly use 50.</span></div>
-      <div><code>result_limit</code><span>Number of retrieved chunks admitted into the local graph. The common working value is 30.</span></div>
+      <div><code>candidate_limit</code><span>Number of chunks retrieved and admitted into the local graph. The common working value is 30.</span></div>
+      <div><code>hybrid_pool_limit</code><span>Internal semantic and lexical channel depth used before hybrid scores are fused. The common value is 100 so score normalization is stable.</span></div>
+      <div><code>graph_candidates</code><span>The actual local evidence field. These are the graph nodes.</span></div>
       <div><code>query_score</code><span>The original hybrid score for a chunk against the query. This is saved for final chunk scoring.</span></div>
     </div>
   </section>
@@ -34,8 +35,8 @@
       <h2>Why Broad Retrieval</h2>
       <p>
         Raw top-5 retrieval can miss support that appears lower in the ranked
-        list. A broader candidate field gives Noetic a chance to recover that
-        support before the final compact return is built.
+        list. A graph-sized candidate field gives Noetic enough material to
+        recover that support before the final compact return is built.
       </p>
     </article>
     <article>

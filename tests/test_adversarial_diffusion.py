@@ -66,7 +66,6 @@ class AdversarialDiffusionTests(unittest.TestCase):
         result = self.reconciler.reconcile(
             query,
             candidate_limit=10,
-            result_limit=10,
             include_diagnostics=True,
         )
 
@@ -91,7 +90,7 @@ class AdversarialDiffusionTests(unittest.TestCase):
             None.
         """
         query = self.test_data["queries"]["system_upgrade_safety"]
-        result = self.reconciler.reconcile(query, candidate_limit=10, result_limit=10)
+        result = self.reconciler.reconcile(query, candidate_limit=10)
 
         chunks = result.chunks(self.db, k=3)
 

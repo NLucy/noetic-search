@@ -42,9 +42,10 @@ Open `http://127.0.0.1:8000/`.
 
 ## Production Method
 
-Hybrid retrieval first returns a broad candidate set, usually top 50. Noetic
-keeps the strongest hybrid results as anchors, builds a graph over the admitted
-candidates, and promotes chunks that are strongly connected to those anchors.
+Hybrid retrieval first scores a fixed internal pool, usually 100 semantic and
+100 lexical candidates. Noetic admits the top 30 fused hybrid results into a
+query-local graph, protects the strongest 3 hybrid results as anchors, and
+promotes chunks that are strongly connected to those anchors.
 
 Edges use ordinary retrieval signals:
 
@@ -70,11 +71,11 @@ remaining chunks fill the compact return.
 
 ## Result
 
-![Hybrid versus Noetic auto support recall](docs/assets/benchmark_summary.svg)
+![Hybrid versus Noetic protected-anchor support recall](docs/assets/benchmark_summary.svg)
 
-On the benchmark summary, Noetic improved mean recall from `0.738` to `0.783`
-across `@5/@10`: a 4.5 percentage-point absolute gain, or a 6.1% relative
-improvement over hybrid.
+On the benchmark summary, Noetic with 3 protected anchors improved mean recall
+from `0.733` to `0.764` across `@5/@10`: a 3.0 percentage-point absolute gain,
+or a 4.1% relative improvement over hybrid.
 
 The detailed ablation study is documented in the MkDocs site.
 

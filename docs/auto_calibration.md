@@ -44,7 +44,7 @@
 
   <section class="panel">
     <p class="eyebrow">Candidate formulas</p>
-    <h2>Auto tries many possible edge recipes.</h2>
+    <h2>Auto evaluates candidate edge formulas.</h2>
     <p>
       A candidate formula is one possible <code>GraphWeights</code> setting. It
       changes semantic thresholds, lexical thresholds, semantic weight, lexical
@@ -227,8 +227,7 @@ reconciler = Reconciler(
 
 result = reconciler.reconcile(
     query,
-    candidate_limit=50,
-    result_limit=30,
+    candidate_limit=30,
     return_policy="linked",
 )
 

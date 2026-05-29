@@ -12,8 +12,9 @@ Key variables:
         chunks, diagnostic basin chunks, and target evidence before filling the
         rest.
     `candidate_limit`: Number of hybrid candidates retrieved from first-stage
-        search.
-    `result_limit`: Number of candidates admitted into the local graph.
+        search and admitted into the local graph.
+    `hybrid_pool_limit`: Fixed semantic and lexical channel depth used before
+        hybrid fusion and final candidate truncation.
     `diffusion_steps`: Number of diffusion time steps captured in the trace.
     `edge_threshold`: Minimum embedding similarity used to create graph edges.
     `points`: Browser-facing chunk records with 2D coordinates and pipeline
@@ -81,8 +82,8 @@ def generate_trace(
     collection_name: str = "noetic_trace",
     blind: bool = True,
     max_points: int = 500,
-    candidate_limit: int = 50,
-    result_limit: int = 36,
+    candidate_limit: int = 30,
+    hybrid_pool_limit: int = 100,
     diffusion_steps: int = 4,
     damping: float = 0.85,
     edge_threshold: float = DEFAULT_TRACE_EDGE_THRESHOLD,
@@ -99,8 +100,10 @@ def generate_trace(
         collection_name: Temporary Chroma collection name.
         blind: Whether to strip benchmark-only metadata before indexing.
         max_points: Maximum corpus points to include in the 2D view.
-        candidate_limit: Hybrid candidates retrieved for the query.
-        result_limit: Candidates admitted into the local graph.
+        candidate_limit: Hybrid candidates retrieved for the query and admitted
+            into the local graph.
+        hybrid_pool_limit: Fixed semantic and lexical channel depth used by
+            hybrid search before candidate truncation.
         diffusion_steps: Number of diffusion updates to capture.
         damping: Fraction of energy allowed to move per diffusion step.
         edge_threshold: Minimum embedding similarity for graph edges.
@@ -132,8 +135,12 @@ def generate_trace(
         hybrid = HybridSearch(database)
 
         query = case["query"]
-        candidates = hybrid.search(query, limit=candidate_limit)
-        graph_candidates = candidates[:result_limit]
+        graph_candidates = hybrid.search(
+            query,
+            limit=candidate_limit,
+            pool_limit=hybrid_pool_limit,
+        )
+        candidates = graph_candidates
         doc_index = {result.id: result for result in graph_candidates}
         graph, evidence_edges = build_evidence_graph(
             database,
@@ -227,7 +234,7 @@ def generate_trace(
                 "blind": blind,
                 "max_points": max_points,
                 "candidate_limit": candidate_limit,
-                "result_limit": result_limit,
+                "hybrid_pool_limit": hybrid_pool_limit,
                 "diffusion_steps": diffusion_steps,
                 "damping": damping,
                 "edge_threshold": edge_threshold,

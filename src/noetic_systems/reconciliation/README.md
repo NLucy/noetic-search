@@ -30,8 +30,10 @@ engine -> graph -> ranking -> result
    diffusion, basin scoring, and uncertainty estimation.
    The engine should stay thin. It answers "what happens next?" while each
    process module answers "how is this step computed?"
-   Candidate admission is intentionally simple and stays here: the graph field
-   is the first `result_limit` candidates from broad retrieval.
+   Candidate admission is intentionally direct and stays here: the graph field
+   is the hybrid top-k returned by `candidate_limit`. Hybrid search can use a
+   larger fixed `hybrid_pool_limit` internally so score normalization remains
+   stable even when the graph candidate count changes.
 
 2. `graph.py`
    Builds the evidence graph. Chunks become nodes. Each chunk pair can receive

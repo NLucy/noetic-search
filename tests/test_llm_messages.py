@@ -54,7 +54,6 @@ class LLMMessageTests(unittest.TestCase):
             db,
             "Should I trust the battery life claims?",
             candidate_limit=7,
-            result_limit=7,
         )
         client = OpenAIResponsesClient(model="test-model")
 

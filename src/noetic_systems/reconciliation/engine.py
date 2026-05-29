@@ -8,8 +8,8 @@ scoring remain available as explicit diagnostics and as the alternate
 production return.
 
 The central method is `Reconciler.reconcile()`. In default linked mode, it
-retrieves more candidates than it plans to return, selects a graph-sized working
-set, builds the local evidence graph, and ranks linked support chunks. When
+retrieves the graph-sized candidate field directly, builds the local evidence
+graph, and ranks linked support chunks. When
 diagnostics are requested, it also computes spectral basins plus diffusion
 metrics for inspection. Each intermediate structure is ordinary Python data:
 lists of search results, adjacency dictionaries, energy dictionaries, basin
@@ -21,10 +21,11 @@ rules or matrix logic, the method becomes hard to audit. The engine should answe
 computed?"
 
 Key variables:
-    `candidate_limit`: Number of first-stage hybrid results retrieved for recall.
-        This is intentionally larger than the return count.
-    `result_limit`: Number of retrieved candidates admitted into the local graph.
-        This bounds the query-time graph computation.
+    `candidate_limit`: Number of first-stage hybrid results admitted into the
+        local graph. This bounds the query-time graph computation.
+    `hybrid_pool_limit`: Fixed semantic and lexical channel depth used by
+        hybrid search before final candidate truncation. This keeps hybrid
+        normalization stable when the graph candidate limit changes.
     `edge_threshold`: Minimum embedding similarity used by graph construction.
     `include_diagnostics`: Whether to run spectral partitioning, diffusion, and
         basin scoring for inspection.
@@ -32,15 +33,19 @@ Key variables:
         energy initialization.
     `damping`: Fraction of node energy allowed to move across graph edges during
         each diffusion step.
-    `graph_candidates`: The actual working field used for graph construction and
-        linked-evidence ranking. Diagnostic mode also uses it for spectral
-        detection, diffusion, and basin scoring.
+    `graph_candidates`: The actual working field used for graph construction
+        and linked-evidence ranking. It is exactly the hybrid top-k field
+        retrieved by `candidate_limit`, not a later truncation of a wider list.
     `communities`: Spectral basin assignment for each graph candidate.
     `basins`: Scored evidence regions sorted by descending basin score.
     `return_policy`: Compact return strategy. `linked` preserves early hybrid
         anchors and promotes graph-connected evidence from the candidate field.
         `basin` returns representatives from the strongest diffused basin and
         automatically enables diagnostics.
+    `anchor_count`: Number of leading hybrid candidates used as anchors by the
+        linked-evidence ranker.
+    `protect_anchors`: Whether those anchors are locked at the front of the
+        linked-evidence return.
 """
 
 from __future__ import annotations
@@ -107,43 +112,57 @@ class Reconciler:
         self,
         query: str,
         limit: int = 10,
+        hybrid_pool_limit: int = 100,
     ) -> list[str]:
         """Return top-k documents from hybrid search without reconciliation.
 
         Args:
             query: Query text.
             limit: Maximum number of document ids to return.
+            hybrid_pool_limit: Fixed semantic and lexical channel depth used by
+                hybrid search before final truncation.
 
         Returns:
             Ranked document ids from raw hybrid retrieval.
         """
-        results = self.hybrid.search(query, limit=limit)
+        results = self.hybrid.search(
+            query,
+            limit=limit,
+            pool_limit=hybrid_pool_limit,
+        )
         return [result.id for result in results]
 
     def reconcile(
         self,
         query: str,
         *,
-        candidate_limit: int = 50,
-        result_limit: int = 30,
+        candidate_limit: int = 30,
+        hybrid_pool_limit: int = 100,
         diffusion_steps: int = 10,
         damping: float = 0.85,
         edge_threshold: float = EMBEDDING_EDGE_THRESHOLD,
         return_policy: str = "linked",
         include_diagnostics: bool = False,
+        anchor_count: int = 3,
+        protect_anchors: bool = True,
     ) -> ReconciliationResult:
         """Run graph-based reconciliation over hybrid candidates.
 
         Args:
             query: Query text.
-            candidate_limit: Number of hybrid candidates to retrieve.
-            result_limit: Number of candidates retained for the local graph.
+            candidate_limit: Number of hybrid candidates to retrieve and admit
+                into the local graph.
+            hybrid_pool_limit: Fixed semantic and lexical channel depth used by
+                hybrid search before final candidate truncation.
             diffusion_steps: Number of fixed diffusion iterations.
             damping: Fraction of energy allowed to move across graph edges.
             edge_threshold: Minimum embedding similarity for a semantic edge.
             return_policy: Compact return strategy: `linked` or `basin`.
             include_diagnostics: Whether to run spectral, diffusion, and basin
                 scoring even when the linked return policy is used.
+            anchor_count: Number of leading hybrid candidates used as anchors.
+            protect_anchors: Whether anchors receive a fixed score boost that
+                keeps them at the front of the linked ranking.
 
         Returns:
             Reconciliation result containing compact return ids and optional
@@ -152,13 +171,17 @@ class Reconciler:
         if return_policy not in {"linked", "basin"}:
             raise ValueError("return_policy must be 'linked' or 'basin'")
 
-        candidates = self.hybrid.search(query, limit=candidate_limit)
-        if not candidates:
+        graph_candidates = self.hybrid.search(
+            query,
+            limit=candidate_limit,
+            pool_limit=hybrid_pool_limit,
+        )
+        if not graph_candidates:
             return empty_result(query)
 
-        # Candidate admission is deliberately boring: broad retrieval provides
-        # recall, then the local graph gets a fixed-size working field.
-        graph_candidates = candidates[:result_limit]
+        # Candidate admission is intentionally direct: the returned hybrid
+        # top-k field is the graph field. Hybrid scoring can still use a fixed
+        # internal pool so score normalization does not shift with output size.
         doc_index = {result.id: result for result in graph_candidates}
         graph, edges = build_evidence_graph(
             self.database,
@@ -166,7 +189,14 @@ class Reconciler:
             edge_threshold,
             weights=self.graph_weights,
         )
-        return_documents = tuple(rank_linked_evidence(graph_candidates, graph))
+        return_documents = tuple(
+            rank_linked_evidence(
+                graph_candidates,
+                graph,
+                anchor_count=anchor_count,
+                protect_anchors=protect_anchors,
+            )
+        )
         query_score = {result.id: result.score for result in graph_candidates}
         support = document_support(graph)
 

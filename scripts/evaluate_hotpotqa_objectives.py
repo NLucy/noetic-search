@@ -65,8 +65,7 @@ def main() -> None:
     parser.add_argument("--split", default="validation")
     parser.add_argument("--limit-cases", type=int, default=100)
     parser.add_argument("--collection-name", default="hotpotqa_objective_eval")
-    parser.add_argument("--candidate-limit", type=int, default=50)
-    parser.add_argument("--result-limit", type=int, default=30)
+    parser.add_argument("--candidate-limit", type=int, default=30)
     parser.add_argument("--edge-threshold", type=float, default=0.5)
     parser.add_argument("--calibration-sample", type=int, default=500)
     parser.add_argument(
@@ -115,7 +114,6 @@ def main() -> None:
             result = reconciler.reconcile(
                 case.question,
                 candidate_limit=args.candidate_limit,
-                result_limit=args.result_limit,
                 edge_threshold=args.edge_threshold,
             )
             add_metric_totals(

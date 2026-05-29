@@ -55,7 +55,7 @@ def build_llm_experiment(
     query: str,
     *,
     candidate_limit: int = 10,
-    result_limit: int = 10,
+    hybrid_pool_limit: int = 100,
     chunk_limit: int = 5,
 ) -> LLMExperiment:
     """Build comparable top-k, basin, and evidence-field LLM inputs.
@@ -63,8 +63,10 @@ def build_llm_experiment(
     Args:
         database: Database containing the indexed corpus.
         query: Query to evaluate.
-        candidate_limit: Hybrid candidates to retrieve before reconciliation.
-        result_limit: Candidates retained in the reconciled graph.
+        candidate_limit: Hybrid candidates retrieved and admitted into the
+            reconciled graph.
+        hybrid_pool_limit: Fixed semantic and lexical channel depth used by
+            hybrid search before candidate truncation.
         chunk_limit: Number of chunks to include in compact payloads.
 
     Returns:
@@ -88,7 +90,7 @@ def build_llm_experiment(
     result = reconciler.reconcile(
         query,
         candidate_limit=candidate_limit,
-        result_limit=result_limit,
+        hybrid_pool_limit=hybrid_pool_limit,
         include_diagnostics=True,
     )
     evidence_field = result.evidence_field(max_basins=4)

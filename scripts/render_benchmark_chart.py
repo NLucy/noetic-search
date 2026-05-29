@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Render the external benchmark summary chart.
 
-The chart is intentionally generated from `benchmark_suite_summary.json` so the
-visual can be reproduced after benchmark runs instead of hand-edited.
+The chart is intentionally generated from an anchor-policy benchmark report so
+the visual can be reproduced after benchmark runs instead of hand-edited.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ PLOT_WIDTH = 864
 PLOT_HEIGHT = 320
 BAR_WIDTH = 26
 HYBRID_COLOR = "#2563eb"
-AUTO_COLOR = "#0f766e"
+NOETIC_COLOR = "#0f766e"
 PAPER = "#f7f4ee"
 WHITE = "#fffdf8"
 INK = "#111827"
@@ -114,12 +114,12 @@ def render(summary: dict[str, Any]) -> str:
     ]
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}" role="img" aria-labelledby="title desc">',
-        '<title id="title">Hybrid versus Noetic auto support recall</title>',
-        '<desc id="desc">Grouped bar chart comparing Hybrid and Noetic auto support recall at 5 and 10 across HotpotQA, 2WikiMultiHopQA, and MuSiQue.</desc>',
+        '<title id="title">Hybrid versus Noetic protected-anchor support recall</title>',
+        '<desc id="desc">Grouped bar chart comparing Hybrid and Noetic protected three-anchor support recall at 5 and 10 across HotpotQA, 2WikiMultiHopQA, and MuSiQue.</desc>',
         f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{PAPER}"/>',
         f'<rect x="28" y="28" width="{WIDTH - 56}" height="{HEIGHT - 56}" rx="10" fill="{WHITE}" stroke="{LINE}"/>',
         label(64, 76, "External multi-hop support recall", size=30, anchor="start", weight=800),
-        label(64, 106, "Hybrid baseline versus corpus-native Noetic auto calibration. 300 cases per dataset.", size=15, color=MUTED, anchor="start"),
+        label(64, 106, "Hybrid baseline versus Noetic with 3 protected anchors. 300 cases per dataset.", size=15, color=MUTED, anchor="start"),
     ]
 
     for tick in (0.0, 0.25, 0.5, 0.75, 1.0):
@@ -132,28 +132,36 @@ def render(summary: dict[str, Any]) -> str:
             f'<line x1="{PLOT_LEFT}" y1="{PLOT_TOP + PLOT_HEIGHT}" x2="{PLOT_LEFT + PLOT_WIDTH}" y2="{PLOT_TOP + PLOT_HEIGHT}" stroke="{INK}" stroke-width="1.5"/>',
             f'<rect x="716" y="68" width="16" height="16" rx="3" fill="{HYBRID_COLOR}"/>',
             label(740, 81, "Hybrid", size=14, anchor="start"),
-            f'<rect x="812" y="68" width="16" height="16" rx="3" fill="{AUTO_COLOR}"/>',
-            label(836, 81, "Noetic auto", size=14, anchor="start"),
+            f'<rect x="812" y="68" width="16" height="16" rx="3" fill="{NOETIC_COLOR}"/>',
+            label(836, 81, "Noetic 3-anchor", size=14, anchor="start"),
         ]
     )
 
     group_centers = [244, 550, 856]
     for (dataset_key, dataset_label), center in zip(datasets, group_centers):
-        rows = summary["multihop"]["datasets"][dataset_key]
+        rows = summary[dataset_key]["metrics"]
         values = [
-            ("R@5", rows["@5"]["hybrid_recall"], rows["@5"]["auto_recall"]),
-            ("R@10", rows["@10"]["hybrid_recall"], rows["@10"]["auto_recall"]),
+            (
+                "R@5",
+                rows["hybrid"]["@5"]["recall"],
+                rows["anchors_3_protected"]["@5"]["recall"],
+            ),
+            (
+                "R@10",
+                rows["hybrid"]["@10"]["recall"],
+                rows["anchors_3_protected"]["@10"]["recall"],
+            ),
         ]
         x_positions = [center - 72, center + 24]
         for (cutoff, hybrid, auto), x in zip(values, x_positions):
             parts.append(bar(x, hybrid, HYBRID_COLOR))
-            parts.append(bar(x + BAR_WIDTH + 8, auto, AUTO_COLOR))
+            parts.append(bar(x + BAR_WIDTH + 8, auto, NOETIC_COLOR))
             parts.append(label(x + 13, y_position(hybrid) - 8, f"{hybrid:.3f}", size=12))
             parts.append(label(x + BAR_WIDTH + 21, y_position(auto) - 8, f"{auto:.3f}", size=12))
             parts.append(label(x + BAR_WIDTH + 4, PLOT_TOP + PLOT_HEIGHT + 28, cutoff, size=13, color=MUTED))
         parts.append(label(center, PLOT_TOP + PLOT_HEIGHT + 70, dataset_label, size=17, weight=800))
 
-    parts.append(label(64, 586, "Metric: support recall. Source: reports/benchmark_suite_summary.json.", size=13, color=MUTED, anchor="start"))
+    parts.append(label(64, 586, "Metric: support recall. Source: reports/anchor_policy_300.json.", size=13, color=MUTED, anchor="start"))
     parts.append("</svg>")
     return "\n".join(parts)
 
@@ -168,7 +176,7 @@ def main() -> None:
         None.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--summary", type=Path, default=Path("reports/benchmark_suite_summary.json"))
+    parser.add_argument("--summary", type=Path, default=Path("reports/anchor_policy_300.json"))
     parser.add_argument("--output", type=Path, default=Path("docs/assets/benchmark_summary.svg"))
     args = parser.parse_args()
 

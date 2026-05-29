@@ -102,7 +102,6 @@ def evaluate_significance(
     limit_cases: int,
     k_values: list[int],
     candidate_limit: int,
-    result_limit: int,
     edge_threshold: float,
     calibration_sample: int,
     iterations: int,
@@ -116,7 +115,6 @@ def evaluate_significance(
         limit_cases: Number of examples to load.
         k_values: Rank cutoffs.
         candidate_limit: Hybrid candidates used by reconciliation.
-        result_limit: Candidate graph size.
         edge_threshold: Semantic graph threshold.
         calibration_sample: Corpus documents used for calibration.
         iterations: Bootstrap and randomization iterations.
@@ -148,7 +146,6 @@ def evaluate_significance(
             noetic_result = noetic_reconciler.reconcile(
                 case.question,
                 candidate_limit=candidate_limit,
-                result_limit=result_limit,
                 edge_threshold=edge_threshold,
             )
             noetic_ids = noetic_result.document_ids(max_k)
@@ -214,8 +211,7 @@ def main() -> None:
     )
     parser.add_argument("--objective", choices=GRAPH_OBJECTIVES, default="auto")
     parser.add_argument("--limit-cases", type=int, default=300)
-    parser.add_argument("--candidate-limit", type=int, default=50)
-    parser.add_argument("--result-limit", type=int, default=30)
+    parser.add_argument("--candidate-limit", type=int, default=30)
     parser.add_argument("--edge-threshold", type=float, default=0.5)
     parser.add_argument("--calibration-sample", type=int, default=500)
     parser.add_argument("--ks", type=parse_k_values, default=list(DEFAULT_K_VALUES))
@@ -233,7 +229,6 @@ def main() -> None:
             limit_cases=args.limit_cases,
             k_values=args.ks,
             candidate_limit=args.candidate_limit,
-            result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
             calibration_sample=args.calibration_sample,
             iterations=args.iterations,

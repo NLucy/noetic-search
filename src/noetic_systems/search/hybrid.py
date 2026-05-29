@@ -12,6 +12,8 @@ Key variables:
     `semantic_weight`: Contribution of normalized vector similarity.
     `lexical_weight`: Contribution of normalized BM25 score.
     `limit`: Number of hybrid results returned to the caller.
+    `pool_limit`: Number of semantic and lexical channel results used to score
+        the hybrid pool before final truncation.
     `where`: Optional metadata equality filter passed into both retrieval
         channels.
 """
@@ -55,6 +57,7 @@ class HybridSearch:
         query: str,
         limit: int = 10,
         where: dict[str, Any] | None = None,
+        pool_limit: int | None = None,
     ) -> list[SearchResult]:
         """Perform hybrid search combining semantic and lexical strategies.
 
@@ -62,12 +65,16 @@ class HybridSearch:
             query: Query text to search for.
             limit: Maximum number of results to return.
             where: Optional metadata filter, such as `{"source": "lab"}`.
+            pool_limit: Optional fixed depth for each retrieval channel before
+                normalization and fusion. When omitted, each channel retrieves
+                `limit * 2` results.
 
         Returns:
             Search results sorted by descending combined score.
         """
-        semantic_results = self.semantic.search(query, limit=limit * 2, where=where)
-        lexical_results = self.lexical.search(query, limit=limit * 2, where=where)
+        channel_limit = pool_limit or limit * 2
+        semantic_results = self.semantic.search(query, limit=channel_limit, where=where)
+        lexical_results = self.lexical.search(query, limit=channel_limit, where=where)
 
         semantic_scores = self.normalize_scores(semantic_results)
         lexical_scores = self.normalize_scores(lexical_results)

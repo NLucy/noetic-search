@@ -210,7 +210,6 @@ def evaluate_benchmark(
     variants: list[str],
     k_values: list[int],
     candidate_limit: int,
-    result_limit: int,
     edge_threshold: float,
     calibration_sample: int,
 ) -> dict[str, Any]:
@@ -221,8 +220,8 @@ def evaluate_benchmark(
         limit_cases: Number of cases to evaluate.
         variants: Ablation variants to run.
         k_values: Rank cutoffs.
-        candidate_limit: Hybrid candidates retrieved for candidate recall.
-        result_limit: Candidates admitted to graph reconciliation.
+        candidate_limit: Hybrid candidates retrieved and admitted to graph
+            reconciliation.
         edge_threshold: Default semantic graph edge threshold.
         calibration_sample: Corpus sample size for `linked_auto`.
 
@@ -240,12 +239,15 @@ def evaluate_benchmark(
     totals = {variant: empty_metric_totals(k_values) for variant in variants}
 
     for case in cases:
-        candidates = hybrid.search(case.question, limit=candidate_limit)
-        graph_candidates = candidates[:result_limit]
+        graph_candidates = hybrid.search(
+            case.question,
+            limit=candidate_limit,
+            pool_limit=100,
+        )
         targets = set(case.target_ids)
         for variant in variants:
             if variant == "hybrid":
-                ranked_ids = [candidate.id for candidate in candidates[:max_k]]
+                ranked_ids = [candidate.id for candidate in graph_candidates[:max_k]]
             else:
                 ranked_ids = rank_variant(
                     db,
@@ -296,8 +298,7 @@ def main() -> None:
         help="comma-separated linked ablation variant names",
     )
     parser.add_argument("--limit-cases", type=int, default=100)
-    parser.add_argument("--candidate-limit", type=int, default=50)
-    parser.add_argument("--result-limit", type=int, default=30)
+    parser.add_argument("--candidate-limit", type=int, default=30)
     parser.add_argument("--edge-threshold", type=float, default=0.5)
     parser.add_argument("--calibration-sample", type=int, default=500)
     parser.add_argument("--ks", type=parse_k_values, default=list(DEFAULT_K_VALUES))
@@ -313,7 +314,6 @@ def main() -> None:
             variants=args.variants,
             k_values=args.ks,
             candidate_limit=args.candidate_limit,
-            result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
             calibration_sample=args.calibration_sample,
         )

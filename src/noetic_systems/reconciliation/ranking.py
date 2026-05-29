@@ -88,11 +88,12 @@ def rank_linked_evidence(
     graph_candidates: list[SearchResult],
     graph: dict[str, dict[str, float]],
     *,
-    anchor_count: int = 4,
+    anchor_count: int = 3,
     query_weight: float = 0.50,
     link_weight: float = 0.35,
     support_weight: float = 0.15,
     anchor_bonus: float = 2.0,
+    protect_anchors: bool = True,
 ) -> list[str]:
     """Rank candidates by preserving hybrid anchors and promoting linked evidence.
 
@@ -104,6 +105,8 @@ def rank_linked_evidence(
         link_weight: Weight for edge strength to the anchors.
         support_weight: Weight for weighted graph degree.
         anchor_bonus: Fixed score boost that keeps anchors at the top.
+        protect_anchors: Whether anchors receive the fixed boost. When false,
+            anchors define affinity but still compete under the normal formula.
 
     Returns:
         Ranked document ids for compact linked-evidence return.
@@ -145,7 +148,7 @@ def rank_linked_evidence(
         Returns:
             Descending score and ascending original rank.
         """
-        if doc_id in anchors:
+        if protect_anchors and doc_id in anchors:
             return anchor_bonus - (original_rank[doc_id] * 0.001), -original_rank[doc_id]
         value = (
             query_weight * query_score.get(doc_id, 0.0)

@@ -37,7 +37,6 @@ class ReconciliationTests(unittest.TestCase):
         result = self.reconciler.reconcile(
             "Should I trust the battery life claims?",
             candidate_limit=7,
-            result_limit=7,
             include_diagnostics=True,
         )
 
@@ -50,7 +49,6 @@ class ReconciliationTests(unittest.TestCase):
         result = self.reconciler.reconcile(
             "Should I trust the battery life claims?",
             candidate_limit=7,
-            result_limit=7,
         )
 
         self.assertEqual(result.return_policy, "linked")
@@ -68,7 +66,6 @@ class ReconciliationTests(unittest.TestCase):
         result = self.reconciler.reconcile(
             "Should I trust the battery life claims?",
             candidate_limit=7,
-            result_limit=7,
         )
 
         evidence = result.evidence_field()
@@ -97,7 +94,6 @@ class ReconciliationTests(unittest.TestCase):
         result = self.reconciler.reconcile(
             "Should I trust the battery life claims?",
             candidate_limit=7,
-            result_limit=7,
         )
 
         basin = result.strongest_basin(self.db, k=3)
@@ -119,7 +115,6 @@ class ReconciliationTests(unittest.TestCase):
         result = self.reconciler.reconcile(
             "Should I trust the battery life claims?",
             candidate_limit=7,
-            result_limit=7,
             return_policy="basin",
         )
 

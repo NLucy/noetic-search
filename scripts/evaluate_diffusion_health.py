@@ -88,7 +88,6 @@ def evaluate_with_health(
     objectives: list[str],
     k_values: list[int],
     candidate_limit: int,
-    result_limit: int,
     edge_threshold: float,
     calibration_sample: int,
     diffusion_steps: int,
@@ -103,7 +102,6 @@ def evaluate_with_health(
         objectives: Graph objectives to compare.
         k_values: Rank cutoffs.
         candidate_limit: Hybrid candidates admitted to graph reconciliation.
-        result_limit: Documents kept in the reconciled graph.
         edge_threshold: Default semantic graph edge threshold.
         calibration_sample: Corpus documents sampled for graph calibration.
         diffusion_steps: All-node diffusion diagnostic time steps.
@@ -166,7 +164,6 @@ def evaluate_with_health(
             result = reconciler.reconcile(
                 case.question,
                 candidate_limit=candidate_limit,
-                result_limit=result_limit,
                 edge_threshold=edge_threshold,
             )
             add_metric_totals(metric_totals[objective], result.document_ids(max_k), target_ids)
@@ -300,8 +297,7 @@ def main() -> None:
         help="comma-separated graph objective names",
     )
     parser.add_argument("--limit-cases", type=int, default=100)
-    parser.add_argument("--candidate-limit", type=int, default=50)
-    parser.add_argument("--result-limit", type=int, default=30)
+    parser.add_argument("--candidate-limit", type=int, default=30)
     parser.add_argument("--edge-threshold", type=float, default=0.5)
     parser.add_argument("--calibration-sample", type=int, default=500)
     parser.add_argument("--diffusion-steps", type=int, default=4)
@@ -320,7 +316,6 @@ def main() -> None:
             objectives=args.objectives,
             k_values=args.ks,
             candidate_limit=args.candidate_limit,
-            result_limit=args.result_limit,
             edge_threshold=args.edge_threshold,
             calibration_sample=args.calibration_sample,
             diffusion_steps=args.diffusion_steps,

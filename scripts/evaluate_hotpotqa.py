@@ -128,14 +128,8 @@ def main() -> None:
     parser.add_argument(
         "--candidate-limit",
         type=int,
-        default=50,
-        help="hybrid candidates to feed into reconciliation",
-    )
-    parser.add_argument(
-        "--result-limit",
-        type=int,
         default=30,
-        help="documents kept in the reconciled result graph",
+        help="hybrid candidates retrieved and admitted into the local graph",
     )
     parser.add_argument(
         "--edge-threshold",
@@ -230,18 +224,17 @@ def main() -> None:
         result = reconciler.reconcile(
             case.question,
             candidate_limit=args.candidate_limit,
-            result_limit=args.result_limit,
             diffusion_steps=args.diffusion_steps,
             damping=args.damping,
             edge_threshold=args.edge_threshold,
         )
         reconcile_times.append((time.perf_counter() - reconcile_start) * 1000)
-        graph_candidates = reconciler.hybrid.search(
+        graph_candidates_for_ablations = reconciler.hybrid.search(
             case.question,
-            limit=max(args.candidate_limit, max_k),
+            limit=args.candidate_limit,
+            pool_limit=100,
         )
         noetic_ids = result.document_ids(max_k)
-        graph_candidates_for_ablations = graph_candidates[: args.result_limit]
 
         target_ids = set(case.target_ids)
         add_metric_totals(metric_totals["hybrid"], hybrid_ids, target_ids)
@@ -285,7 +278,6 @@ def main() -> None:
         "cases": total,
         "documents": len(documents),
         "candidate_limit": args.candidate_limit,
-        "result_limit": args.result_limit,
         "edge_threshold": args.edge_threshold,
         "calibrate_graph": args.calibrate_graph,
         "graph_objective": args.graph_objective,
@@ -312,7 +304,7 @@ def main() -> None:
     print(f"subset/split: {args.subset}/{args.split}")
     print(f"cases: {total}")
     print(f"documents: {len(documents)}")
-    print(f"candidate/result limit: {args.candidate_limit}/{args.result_limit}")
+    print(f"candidate limit: {args.candidate_limit}")
     print(f"edge threshold: {args.edge_threshold:.2f}")
     print(f"calibrate graph: {args.calibrate_graph}")
     if args.calibrate_graph:

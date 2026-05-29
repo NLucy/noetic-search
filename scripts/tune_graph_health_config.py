@@ -240,7 +240,6 @@ def evaluate_config(
     health_config: GraphHealthConfig,
     k_values: list[int],
     candidate_limit: int,
-    result_limit: int,
     edge_threshold: float,
     calibration_sample: int,
 ) -> dict[str, Any]:
@@ -252,7 +251,6 @@ def evaluate_config(
         health_config: Frozen graph-health scoring configuration.
         k_values: Rank cutoffs.
         candidate_limit: Hybrid candidates admitted to reconciliation.
-        result_limit: Documents retained in the local graph.
         edge_threshold: Default semantic graph edge threshold.
         calibration_sample: Corpus documents sampled for graph calibration.
 
@@ -273,7 +271,6 @@ def evaluate_config(
         result = reconciler.reconcile(
             case.question,
             candidate_limit=candidate_limit,
-            result_limit=result_limit,
             edge_threshold=edge_threshold,
         )
         add_metric_totals(totals, result.document_ids(max_k), set(case.target_ids))
@@ -341,7 +338,6 @@ def tune_health_config(
     validation_finalists: int,
     k_values: list[int],
     candidate_limit: int,
-    result_limit: int,
     edge_threshold: float,
     calibration_sample: int,
 ) -> dict[str, Any]:
@@ -356,7 +352,6 @@ def tune_health_config(
             validation splits.
         k_values: Rank cutoffs.
         candidate_limit: Hybrid candidates admitted to reconciliation.
-        result_limit: Documents retained in the local graph.
         edge_threshold: Default semantic graph edge threshold.
         calibration_sample: Corpus documents sampled for graph calibration.
 
@@ -395,7 +390,6 @@ def tune_health_config(
                 health_config=config,
                 k_values=k_values,
                 candidate_limit=candidate_limit,
-                result_limit=result_limit,
                 edge_threshold=edge_threshold,
                 calibration_sample=calibration_sample,
             )
@@ -424,7 +418,6 @@ def tune_health_config(
                 health_config=config,
                 k_values=k_values,
                 candidate_limit=candidate_limit,
-                result_limit=result_limit,
                 edge_threshold=edge_threshold,
                 calibration_sample=calibration_sample,
             )
@@ -455,7 +448,6 @@ def tune_health_config(
             health_config=winner_config,
             k_values=k_values,
             candidate_limit=candidate_limit,
-            result_limit=result_limit,
             edge_threshold=edge_threshold,
             calibration_sample=calibration_sample,
         )
@@ -471,7 +463,6 @@ def tune_health_config(
             "benchmarks": benchmarks,
             "k_values": k_values,
             "candidate_limit": candidate_limit,
-            "result_limit": result_limit,
             "edge_threshold": edge_threshold,
             "calibration_sample": calibration_sample,
             "note": (
@@ -510,8 +501,7 @@ def main() -> None:
     parser.add_argument("--validation-cases", type=int, default=100)
     parser.add_argument("--test-cases", type=int, default=100)
     parser.add_argument("--validation-finalists", type=int, default=8)
-    parser.add_argument("--candidate-limit", type=int, default=50)
-    parser.add_argument("--result-limit", type=int, default=30)
+    parser.add_argument("--candidate-limit", type=int, default=30)
     parser.add_argument("--edge-threshold", type=float, default=0.5)
     parser.add_argument("--calibration-sample", type=int, default=500)
     parser.add_argument("--ks", type=parse_k_values, default=list(DEFAULT_K_VALUES))
@@ -526,7 +516,6 @@ def main() -> None:
         validation_finalists=args.validation_finalists,
         k_values=args.ks,
         candidate_limit=args.candidate_limit,
-        result_limit=args.result_limit,
         edge_threshold=args.edge_threshold,
         calibration_sample=args.calibration_sample,
     )
