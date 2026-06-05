@@ -264,7 +264,7 @@ def derivation_notes(summary: dict[str, Any]) -> list[str]:
         (
             "Across external multi-hop corpora, graph reconciliation should be "
             "judged first by support recall at compact k, not by downstream "
-            "answer truth."
+            "answer correctness."
         ),
         (
             "Corpus-native calibration is valid only when weights are selected "

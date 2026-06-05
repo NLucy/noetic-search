@@ -25,7 +25,8 @@ Key variables:
     `diagnostics_included`: Whether basin diagnostics were computed.
     `return_policy`: Compact return policy used by `document_ids()`.
     `return_documents`: Ranked document ids selected for compact return.
-    `uncertainty`: Structural caution score. It is not a truth probability.
+    `uncertainty`: Structural caution score. It is not a correctness
+        probability.
     `document_energy`: Final diffused energy by document id.
     `document_specificity`: Local information-density score by document id.
     `document_query_score`: Original hybrid retrieval score by document id.

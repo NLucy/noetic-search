@@ -197,7 +197,7 @@ split Fiedler values -> candidate regions</pre>
           <h3>Intuition</h3>
           <p>
             Hybrid rank should matter because retrieval did useful work, but it
-            should not be final truth. Whole-graph diffusion asks where that
+            should not become the final decision. Whole-graph diffusion asks where that
             retrieval signal wants to move when every graph edge is available.
           </p>
         </div>
@@ -333,7 +333,7 @@ basin_energy = diffuse(seed_energy, basin_graph)</pre>
             The score combines basin competition, energy dispersion, and
             modularity. The trace also reports flow alignment: whether
             whole-graph diffusion favored the same basin selected by
-            basin-constrained scoring. It is not a truth probability; it is a
+            basin-constrained scoring. It is not a correctness probability; it is a
             structural caution signal.
           </p>
         </div>

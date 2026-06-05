@@ -4,11 +4,11 @@ Metrics translate graph structure into simple, inspectable signals: support,
 specificity, cohesion, dispersion, and modularity. We use these measures to
 prefer basins that are coherent and specific without being merely repetitive.
 
-The metrics are deliberately modest. They are not trying to decide truth; they
-describe the shape of the retrieved evidence. Support measures how connected a
-chunk is, specificity rewards terms that distinguish a chunk from the rest of
-the candidate set, cohesion measures internal edge strength, and duplicate
-penalty reduces regions dominated by repeated material.
+The metrics are deliberately modest. They are not trying to decide answer
+correctness; they describe the shape of the retrieved evidence. Support
+measures how connected a chunk is, specificity rewards terms that distinguish a
+chunk from the rest of the candidate set, cohesion measures internal edge
+strength, and duplicate penalty reduces regions dominated by repeated material.
 
 Structural uncertainty is calculated in `noetic_systems.reconciliation.basins`.
 This module provides the component measurements that uncertainty and basin

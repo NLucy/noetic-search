@@ -47,7 +47,7 @@ Key variables:
         the values sum to 1.0 when possible.
     `rank`: Zero-based candidate position from hybrid retrieval. The initializer
         divides by `rank + 1`, so top-ranked chunks start stronger without
-        becoming final truth.
+        becoming the final decision.
     `graph`: Weighted adjacency mapping. Edge weights control how movable energy
         is distributed to neighbors.
     `communities`: Spectral basin assignment by document id.

@@ -6,12 +6,12 @@ judgment. It measures the shape of pairwise semantic similarity, lexical
 salience, explicit cross-reference frequency, and graph health, then returns a
 single `GraphWeights` record that can be reused for queries over that index.
 
-The purpose is not to discover truth from the corpus. The purpose is to avoid a
-single global edge formula when corpora have different structure. A corpus with
-many explicit cross-references can safely give those edges more weight. A corpus
-with sparse lexical salience should avoid overvaluing weak shared tokens. A corpus
-with many near-duplicates should keep duplicate contribution small and
-inspectable.
+The purpose is not to infer answer correctness from the corpus. The purpose is
+to avoid a single global edge formula when corpora have different structure. A
+corpus with many explicit cross-references can safely give those edges more
+weight. A corpus with sparse lexical salience should avoid overvaluing weak
+shared tokens. A corpus with many near-duplicates should keep duplicate
+contribution small and inspectable.
 
 `GraphHealthConfig` makes the scoring objective explicit. The default config is
 an inspectable operating prior, not a theoretically optimal law. Benchmark work
